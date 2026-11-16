@@ -69,23 +69,24 @@ def pending_panel(
     items_html = ""
     if planned_capabilities:
         items = "".join(f"<li>{html.escape(item)}</li>" for item in planned_capabilities)
-        items_html = f"""
-        <div style="margin-top: 0.75rem;">
-            <div style="font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.375rem;">Planned Capabilities:</div>
-            <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.6;">
-                {items}
-            </ul>
-        </div>
-        """
+        items_html = (
+            '<div style="margin-top: 0.75rem;">'
+            '<div style="font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; '
+            'letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.375rem;">'
+            'Planned Capabilities:</div>'
+            '<ul style="margin: 0; padding-left: 1.25rem; font-size: 0.875rem; '
+            f'color: var(--color-text-secondary); line-height: 1.6;">{items}</ul>'
+            '</div>'
+        )
 
-    markup = f"""
-<div class="nids-panel nids-panel-pending">
-    <div class="nids-panel-icon">🔒</div>
-    <div class="nids-panel-content">
-        <div class="nids-panel-title">Stage Guardrail Active &bull; {safe_cp}: {safe_title}</div>
-        <div>{safe_desc}</div>
-        {items_html}
-    </div>
-</div>
-"""
+    markup = (
+        '<div class="nids-panel nids-panel-pending">'
+        '<div class="nids-panel-icon">🔒</div>'
+        '<div class="nids-panel-content">'
+        f'<div class="nids-panel-title">Stage Guardrail Active &bull; {safe_cp}: {safe_title}</div>'
+        f'<div>{safe_desc}</div>'
+        f'{items_html}'
+        '</div>'
+        '</div>'
+    )
     st.markdown(markup, unsafe_allow_html=True)

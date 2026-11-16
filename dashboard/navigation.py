@@ -167,26 +167,26 @@ def render_sidebar() -> Route:
     if selected_route.route_id != current_route_id:
         st.session_state[SESSION_ROUTE_KEY] = selected_route.route_id
 
-    # 3. System Status Widget in Sidebar
+    # 3. Project Status Widget in Sidebar
     status_markup = f"""
 <div class="nids-status-widget">
     <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-        SYSTEM HEALTH
+        PROJECT STATUS
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Environment</span>
+        <span class="nids-status-label">Current Stage</span>
         <span style="color: var(--color-status-success); font-weight: 600;">CP-02 Active</span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Dataset</span>
+        <span class="nids-status-label">Dataset Baseline</span>
         <span style="color: var(--color-text-primary);">{settings.dataset.name}</span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">ML Engines</span>
-        <span style="color: var(--color-status-warning); font-weight: 600;">Idle (CP-06)</span>
+        <span class="nids-status-label">Detection Engines</span>
+        <span style="color: var(--color-status-neutral); font-weight: 600;">Uninitialized (CP-06)</span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Algorithms</span>
+        <span class="nids-status-label">Models Authorized</span>
         <span style="color: var(--color-text-primary);">SVM, MLP, DT</span>
     </div>
 </div>

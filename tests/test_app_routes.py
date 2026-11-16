@@ -32,6 +32,34 @@ class TestAppNavigationRoutes(unittest.TestCase):
                 f"Session state active route does not match '{route.route_id}'",
             )
 
+    def test_navigation_state_persists_across_consecutive_reruns(self) -> None:
+        """Verify selected route persists in session state across repeated reruns."""
+        app = AppTest.from_file(APP_PATH, default_timeout=20).run()
+        radio = app.sidebar.radio("nids_navigation_radio")
+
+        # Select Detection Center
+        target_display = next(r.display_name for r in ROUTES if r.route_id == "detection_center")
+        radio.set_value(target_display).run()
+        self.assertEqual(app.session_state["nids_active_route"], "detection_center")
+
+        # Trigger consecutive rerun without changing widget value
+        app.run()
+        self.assertEqual(
+            app.session_state["nids_active_route"],
+            "detection_center",
+            "Navigation state lost on second rerun",
+        )
+        self.assertEqual(len(app.exception), 0)
+
+        # Trigger a third rerun
+        app.run()
+        self.assertEqual(
+            app.session_state["nids_active_route"],
+            "detection_center",
+            "Navigation state lost on third rerun",
+        )
+        self.assertEqual(len(app.exception), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

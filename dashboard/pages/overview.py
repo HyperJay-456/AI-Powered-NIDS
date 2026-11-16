@@ -20,7 +20,7 @@ def render() -> None:
         badge_variant="success",
     )
 
-    # Top KPI Metrics (Real system state, zero fabrication)
+    # Architectural & Project Foundation Parameters (Zero fabrication)
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         metric_card(
@@ -43,10 +43,10 @@ def render() -> None:
         )
     with col4:
         metric_card(
-            label="Engine Status",
-            value="Idle",
-            subtitle="Awaiting CP-06 Pipeline",
-            status_color="var(--color-status-warning)",
+            label="Detection Pipeline",
+            value="Uninitialized",
+            subtitle="Scheduled for CP-06",
+            status_color="var(--color-status-neutral)",
         )
 
     # Core System Architecture Panel
