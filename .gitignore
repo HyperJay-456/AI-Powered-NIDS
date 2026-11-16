@@ -61,6 +61,11 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/metadata/*
+!data/metadata/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
 *.csv
 *.parquet
 *.feather

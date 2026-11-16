@@ -111,7 +111,8 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
 
     with col_status:
         badge_variant = "success" if dataset_status.is_loaded else "warning"
-        badge_markup = badge_html(dataset_status.summary_text, variant=badge_variant)
+        status_label = dataset_status.validation_status if dataset_status.is_loaded else dataset_status.summary_text
+        badge_markup = badge_html(status_label, variant=badge_variant)
         st.markdown(
             f"""
             <div class="nids-card" style="margin-bottom: 0;">
@@ -122,7 +123,7 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
                 <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.6;">
                     <div><strong>Detected Files:</strong> {dataset_status.file_count} compatible CSVs</div>
                     <div><strong>Directory Status:</strong> Initialized (Read-only verified)</div>
-                    <div><strong>Ingestion Status:</strong> Planned for CP-04 / CP-05</div>
+                    <div><strong>Validation Status:</strong> {dataset_status.validation_status}</div>
                 </div>
             </div>
             """,
@@ -136,9 +137,8 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
             title="Dataset Availability Notice",
             message=(
                 f"No compatible CSV files are currently detected in the local repository storage directory ('{dataset_status.storage_path}'). "
-                "Users may prepare the CIC-IDS-2017 CSV files in advance. Automated CSV upload through the "
-                "Traffic Analysis module will become available in Checkpoint CP-04 (Traffic Upload & Data Explorer) "
-                "without requiring manual filesystem placement."
+                "Users may upload CIC-IDS-2017 CSV flow files through the 'Traffic Analysis' navigation tab. "
+                "Uploaded files will be validated and cataloged in 'data/raw/' with original byte integrity."
             ),
             icon="ℹ️",
         )

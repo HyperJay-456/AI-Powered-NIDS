@@ -52,7 +52,7 @@ ROUTES: List[Route] = [
         route_id="traffic_analysis",
         label="Traffic Analysis",
         icon="📊",
-        description="Network flow telemetry & distributions",
+        description="CSV flow upload, validation & explorer",
         render_fn=traffic_analysis.render,
     ),
     Route(
@@ -175,7 +175,7 @@ def render_sidebar() -> Route:
     </div>
     <div class="nids-status-row">
         <span class="nids-status-label">Current Stage</span>
-        <span style="color: var(--color-status-success); font-weight: 600;">CP-03 Active</span>
+        <span style="color: var(--color-status-success); font-weight: 600;">CP-04 Active</span>
     </div>
     <div class="nids-status-row">
         <span class="nids-status-label">Dataset Baseline</span>

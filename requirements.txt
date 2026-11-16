@@ -16,9 +16,10 @@ scikit-learn>=1.4.0
 # Model Persistence & Artifact Serialization
 joblib>=1.3.0
 
-# Statistical Data Visualization
+# Statistical Data Visualization & Interactive Analytics
 matplotlib>=3.8.0
 seaborn>=0.13.0
+plotly>=5.20.0
 
 # Configuration, Validation & Environment Management
 pydantic>=2.7.0

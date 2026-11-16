@@ -16,6 +16,7 @@ BASE_DIR: Path = Path(__file__).resolve().parent.parent
 DATA_DIR: Path = BASE_DIR / "data"
 RAW_DATA_DIR: Path = DATA_DIR / "raw"
 PROCESSED_DATA_DIR: Path = DATA_DIR / "processed"
+METADATA_DIR: Path = DATA_DIR / "metadata"
 MODELS_DIR: Path = BASE_DIR / "models"
 SAVED_MODELS_DIR: Path = MODELS_DIR / "saved"
 LOGS_DIR: Path = BASE_DIR / "logs"
@@ -146,6 +147,22 @@ class EvaluationConfig:
 
 
 # ==============================================================================
+# ==============================================================================
+# Ingestion & Large File Batch Configurations
+# ==============================================================================
+@dataclass(frozen=True)
+class IngestionConfig:
+    """Configuration for CSV traffic upload, batch chunking, and validation."""
+
+    default_chunk_size: int = 50_000
+    max_upload_size_mb: int = 1000
+    min_disk_free_mb: int = 500
+    allowed_extensions: Tuple[str, ...] = (".csv",)
+    max_preview_rows: int = 100
+    default_preview_rows: int = 25
+
+
+# ==============================================================================
 # Streamlit Application Presentation Settings
 # ==============================================================================
 @dataclass(frozen=True)
@@ -171,12 +188,14 @@ class AppConfig:
     data_dir: Path = DATA_DIR
     raw_data_dir: Path = RAW_DATA_DIR
     processed_data_dir: Path = PROCESSED_DATA_DIR
+    metadata_dir: Path = METADATA_DIR
     models_dir: Path = MODELS_DIR
     saved_models_dir: Path = SAVED_MODELS_DIR
     logs_dir: Path = LOGS_DIR
     src_dir: Path = SRC_DIR
 
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    ingestion: IngestionConfig = field(default_factory=IngestionConfig)
     models: ModelHyperparameters = field(default_factory=ModelHyperparameters)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     ui: StreamlitConfig = field(default_factory=StreamlitConfig)
@@ -186,6 +205,7 @@ class AppConfig:
         for path in (
             self.raw_data_dir,
             self.processed_data_dir,
+            self.metadata_dir,
             self.saved_models_dir,
             self.logs_dir,
         ):

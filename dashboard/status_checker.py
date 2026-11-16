@@ -5,6 +5,7 @@ to provide verifiable operational telemetry without fabricated or synthetic data
 """
 
 from dataclasses import dataclass, field
+import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -28,6 +29,8 @@ class DatasetStatus:
     target_dataset_name: str
     storage_path: str
     expected_format: str = "CSV"
+    validation_status: str = "Dataset Not Loaded"
+    validated_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -95,16 +98,21 @@ class ProjectMilestone:
     description: str
 
 
-def check_dataset_status(raw_dir: Optional[Path] = None) -> DatasetStatus:
-    """Verify presence of compatible dataset files in the raw data directory.
+def check_dataset_status(
+    raw_dir: Optional[Path] = None,
+    metadata_dir: Optional[Path] = None,
+) -> DatasetStatus:
+    """Verify presence of compatible dataset files and validation state.
 
     Args:
-        raw_dir: Optional override path for testing.
+        raw_dir: Optional override path for testing raw data storage.
+        metadata_dir: Optional override path for testing metadata storage.
 
     Returns:
-        DatasetStatus: Verifiable dataset availability.
+        DatasetStatus: Verifiable dataset availability and validation telemetry.
     """
     target_dir = raw_dir or RAW_DATA_DIR
+    target_meta = metadata_dir or settings.metadata_dir
     target_name = settings.dataset.name
 
     if not target_dir.exists():
@@ -115,6 +123,8 @@ def check_dataset_status(raw_dir: Optional[Path] = None) -> DatasetStatus:
             summary_text="Dataset Not Loaded",
             target_dataset_name=target_name,
             storage_path=str(target_dir),
+            validation_status="Dataset Not Loaded",
+            validated_count=0,
         )
 
     # Safe read-only inspection of CSV files
@@ -124,9 +134,43 @@ def check_dataset_status(raw_dir: Optional[Path] = None) -> DatasetStatus:
     if count == 0:
         summary = "Dataset Not Loaded"
         loaded = False
+        val_status = "Dataset Not Loaded"
+        validated_count = 0
     else:
         summary = f"{count} File{'s' if count > 1 else ''} Available"
         loaded = True
+
+        # Check ingestion manifest if available
+        manifest_path = target_meta / "ingestion_manifest.json"
+        validated_count = 0
+        has_failed = False
+        has_warnings = False
+
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest_data = json.load(f)
+                for item in manifest_data.values():
+                    v_stat = item.get("validation_status", "")
+                    if "Validated" in v_stat:
+                        validated_count += 1
+                    if "Warnings" in v_stat:
+                        has_warnings = True
+                    if "Failed" in v_stat:
+                        has_failed = True
+
+                if has_failed:
+                    val_status = "Validation Failed"
+                elif has_warnings:
+                    val_status = "Validated with Warnings"
+                elif validated_count > 0:
+                    val_status = "Validated"
+                else:
+                    val_status = "Uploaded (Pending Validation)"
+            except Exception:
+                val_status = "Uploaded (Pending Validation)"
+        else:
+            val_status = "Uploaded (Pending Validation)"
 
     return DatasetStatus(
         is_loaded=loaded,
@@ -135,6 +179,8 @@ def check_dataset_status(raw_dir: Optional[Path] = None) -> DatasetStatus:
         summary_text=summary,
         target_dataset_name=target_name,
         storage_path=str(target_dir.relative_to(settings.base_dir) if target_dir.is_relative_to(settings.base_dir) else target_dir),
+        validation_status=val_status,
+        validated_count=validated_count,
     )
 
 
@@ -215,12 +261,35 @@ def check_model_status(models_dir: Optional[Path] = None) -> ModelSystemStatus:
     )
 
 
-def check_traffic_analysis_status() -> TrafficAnalysisStatus:
-    """Verify traffic analysis operational state.
+def check_traffic_analysis_status(
+    metadata_dir: Optional[Path] = None,
+) -> TrafficAnalysisStatus:
+    """Verify traffic analysis operational state from ingestion manifests.
+
+    Args:
+        metadata_dir: Optional override path for testing metadata storage.
 
     Returns:
         TrafficAnalysisStatus: Non-fabricated operational status.
     """
+    target_meta = metadata_dir or settings.metadata_dir
+    manifest_path = target_meta / "ingestion_manifest.json"
+
+    if manifest_path.exists():
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data:
+                count = len(data)
+                total_rows = sum(item.get("total_rows", 0) for item in data.values())
+                return TrafficAnalysisStatus(
+                    is_available=True,
+                    summary_text=f"{count} Dataset{'s' if count > 1 else ''} Ingested",
+                    detail_text=f"{total_rows:,} records cataloged" if total_rows > 0 else "Validation pending",
+                )
+        except Exception:
+            pass
+
     return TrafficAnalysisStatus(
         is_available=False,
         summary_text="No Analysis Yet",
