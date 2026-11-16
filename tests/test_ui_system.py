@@ -95,6 +95,16 @@ class TestUIDesignSystem(unittest.TestCase):
         self.assertIn('secondaryBackgroundColor = "#111827"', content)
         self.assertIn('textColor = "#F1F5F9"', content)
 
+    def test_page_header_multiple_badges_rendering(self) -> None:
+        """Verify page_header correctly renders multiple status badges."""
+        from dashboard.components.headers import page_header
+        # Verify function accepts badges list without error
+        badges = [("Mode: Local / Offline", "neutral"), ("CP-03 Active", "info")]
+        try:
+            page_header(title="Test Header", badges=badges)
+        except Exception as e:
+            self.fail(f"page_header raised exception with multiple badges: {e}")
+
 
 if __name__ == "__main__":
     unittest.main()

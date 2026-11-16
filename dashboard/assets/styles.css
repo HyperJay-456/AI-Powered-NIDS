@@ -39,6 +39,8 @@ section[data-testid="stSidebar"] .block-container {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .nids-header-title-group {
@@ -67,12 +69,19 @@ section[data-testid="stSidebar"] .block-container {
     line-height: 1.5;
 }
 
+.nids-header-meta-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 /* Metric Cards */
 .nids-metric-card {
     background-color: var(--color-surface, #172033);
     border: 1px solid var(--color-border-default, #29364B);
     border-radius: var(--radius-md, 8px);
-    padding: 1.25rem 1.25rem 1rem 1.25rem;
+    padding: 1rem 1rem 0.875rem 1rem;
     transition: border-color 0.15s ease, transform 0.15s ease;
     box-shadow: var(--shadow-subtle, 0 1px 2px 0 rgba(0, 0, 0, 0.35));
     height: 100%;
@@ -83,26 +92,32 @@ section[data-testid="stSidebar"] .block-container {
 }
 
 .nids-metric-label {
-    font-size: 0.8125rem;
-    font-weight: 500;
+    font-size: 0.6875rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     color: var(--color-text-secondary, #94A3B8);
     margin-bottom: 0.375rem;
+    word-break: normal;
+    overflow-wrap: normal;
 }
 
 .nids-metric-value {
-    font-size: 1.75rem;
+    font-size: clamp(0.875rem, 1.3vw, 1.5rem);
     font-weight: 700;
     color: var(--color-text-primary, #F1F5F9);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
     margin-bottom: 0.375rem;
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: none;
 }
 
 .nids-metric-subtitle {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: var(--color-text-muted, #64748B);
+    word-break: normal;
 }
 
 /* Status Badges */
@@ -116,6 +131,7 @@ section[data-testid="stSidebar"] .block-container {
     font-weight: 600;
     letter-spacing: 0.02em;
     line-height: 1;
+    white-space: nowrap;
 }
 
 .nids-badge-dot {
@@ -243,6 +259,192 @@ section[data-testid="stSidebar"] .block-container {
     font-size: 0.875rem;
     color: var(--color-text-secondary, #94A3B8);
     margin-bottom: 1rem;
+}
+
+/* Model Architecture Cards */
+.nids-model-card {
+    background-color: var(--color-surface, #172033);
+    border: 1px solid var(--color-border-default, #29364B);
+    border-radius: var(--radius-md, 8px);
+    padding: 1.25rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: var(--shadow-subtle, 0 1px 2px 0 rgba(0, 0, 0, 0.35));
+    transition: border-color 0.15s ease;
+}
+
+.nids-model-card:hover {
+    border-color: var(--color-accent-primary, #6385FF);
+}
+
+.nids-model-header {
+    margin-bottom: 0.75rem;
+}
+
+.nids-model-category {
+    font-size: 0.6875rem;
+    color: var(--color-accent-primary, #6385FF);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.375rem;
+}
+
+.nids-model-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #F1F5F9);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+}
+
+.nids-model-status-row {
+    margin-bottom: 0.75rem;
+}
+
+.nids-model-desc {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary, #94A3B8);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+}
+
+.nids-model-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border-subtle, #1E293B);
+    font-size: 0.75rem;
+}
+
+/* Pipeline Stage Visual Step Cards */
+.nids-pipeline-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.nids-pipeline-step {
+    background-color: var(--color-surface, #172033);
+    border: 1px solid var(--color-border-default, #29364B);
+    border-radius: var(--radius-md, 8px);
+    padding: 1rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.nids-pipeline-step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.nids-pipeline-step-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #F1F5F9);
+    margin: 0;
+}
+
+.nids-pipeline-step-desc {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #94A3B8);
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+}
+
+/* Milestone Progress Cards */
+.nids-milestone-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.nids-milestone-item {
+    background-color: var(--color-surface, #172033);
+    border: 1px solid var(--color-border-default, #29364B);
+    border-radius: var(--radius-md, 8px);
+    padding: 0.875rem 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.nids-milestone-item.active {
+    border-color: var(--color-accent-primary, #6385FF);
+    background-color: var(--color-surface-elevated, #1E293B);
+}
+
+.nids-milestone-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.375rem;
+}
+
+.nids-milestone-code {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #F1F5F9);
+}
+
+.nids-milestone-desc {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #94A3B8);
+    line-height: 1.4;
+}
+
+/* Getting Started Workflow List */
+.nids-step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.nids-step-item {
+    background-color: var(--color-surface, #172033);
+    border: 1px solid var(--color-border-default, #29364B);
+    border-radius: var(--radius-md, 8px);
+    padding: 0.875rem 1.125rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.nids-step-left {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+}
+
+.nids-step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--color-surface-elevated, #1E293B);
+    border: 1px solid var(--color-border-accent, #3D4F6C);
+    color: var(--color-accent-primary, #6385FF);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.nids-step-text {
+    font-size: 0.875rem;
+    color: var(--color-text-primary, #F1F5F9);
 }
 
 /* Sidebar Brand Styling */

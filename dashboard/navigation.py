@@ -45,7 +45,7 @@ ROUTES: List[Route] = [
         route_id="overview",
         label="Overview",
         icon="🛡️",
-        description="Executive telemetry & system architecture",
+        description="Executive telemetry & application dashboard",
         render_fn=overview.render,
     ),
     Route(
@@ -175,7 +175,7 @@ def render_sidebar() -> Route:
     </div>
     <div class="nids-status-row">
         <span class="nids-status-label">Current Stage</span>
-        <span style="color: var(--color-status-success); font-weight: 600;">CP-02 Active</span>
+        <span style="color: var(--color-status-success); font-weight: 600;">CP-03 Active</span>
     </div>
     <div class="nids-status-row">
         <span class="nids-status-label">Dataset Baseline</span>

@@ -1,7 +1,7 @@
 """Page and section headers for consistent view structure."""
 
 import html
-from typing import Optional
+from typing import List, Optional, Tuple
 import streamlit as st
 
 from dashboard.components.badges import badge_html, BadgeVariant
@@ -13,24 +13,30 @@ def page_header(
     icon: Optional[str] = None,
     badge_text: Optional[str] = None,
     badge_variant: BadgeVariant = "info",
+    badges: Optional[List[Tuple[str, BadgeVariant]]] = None,
 ) -> None:
-    """Render a standardized page header with optional icon and status badge.
+    """Render a standardized page header with optional icon and status badges.
 
     Args:
         title: Main page title text.
         subtitle: Optional descriptive subtitle.
         icon: Optional emoji or symbol icon.
-        badge_text: Optional text for right-aligned status badge.
-        badge_variant: Variant for the badge.
+        badge_text: Optional single text for right-aligned status badge.
+        badge_variant: Variant for the single badge.
+        badges: Optional list of (label, variant) tuples for multiple badges.
     """
     safe_title = html.escape(title)
     safe_subtitle = html.escape(subtitle) if subtitle else ""
     safe_icon = html.escape(icon) if icon else ""
 
-    badge_markup = ""
-    if badge_text:
-        badge_markup = badge_html(label=badge_text, variant=badge_variant)
+    badge_elements: List[str] = []
+    if badges:
+        for b_text, b_var in badges:
+            badge_elements.append(badge_html(label=b_text, variant=b_var))
+    elif badge_text:
+        badge_elements.append(badge_html(label=badge_text, variant=badge_variant))
 
+    badge_markup = "".join(badge_elements)
     icon_markup = f'<span class="nids-header-icon">{safe_icon}</span>' if safe_icon else ""
     subtitle_markup = (
         f'<p class="nids-header-subtitle">{safe_subtitle}</p>' if safe_subtitle else ""
@@ -43,7 +49,7 @@ def page_header(
             {icon_markup}
             <h1 class="nids-header-title">{safe_title}</h1>
         </div>
-        <div>
+        <div class="nids-header-meta-group">
             {badge_markup}
         </div>
     </div>
