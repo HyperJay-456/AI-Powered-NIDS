@@ -31,6 +31,27 @@ class QualityIssueSample:
     description: str
 
 
+def serialize_row_length_safe(row: Tuple[Any, ...]) -> bytes:
+    """Deterministically serialize a tuple of cell values into length-prefixed bytes.
+
+    Eliminates delimiter collision vulnerabilities (e.g., ['ab', 'c'] vs ['a', 'bc'],
+    ['a|b', 'c'] vs ['a', 'b|c'], embedded commas, newlines, and distinguishes
+    missing/null values from empty strings or literal sentinel strings).
+
+    Format per cell:
+      - Null / NaN (missing value): b"N;"
+      - String content: b"S<byte_length>:<utf8_bytes>;"
+    """
+    parts: List[bytes] = []
+    for val in row:
+        if val is None or pd.isna(val):
+            parts.append(b"N;")
+        else:
+            s_bytes = str(val).encode("utf-8", errors="replace")
+            parts.append(f"S{len(s_bytes)}:".encode("ascii") + s_bytes + b";")
+    return b"".join(parts)
+
+
 class DiskBackedDuplicateDetector:
     """Bounded-memory exact duplicate row detector powered by a disk-backed SQLite index.
 
@@ -87,12 +108,10 @@ class DiskBackedDuplicateDetector:
             return 0
 
         try:
-            # Generate deterministic string representation of each row
-            # Replace NaNs with distinct marker so NaN patterns match consistently
-            values_matrix = df.astype(object).fillna("__NIDS_NULL__").astype(str).values
+            # Generate unambiguous, length-safe serialized representation of each row
             hashes: List[Tuple[bytes]] = []
-            for row in values_matrix:
-                row_bytes = "|".join(row).encode("utf-8", errors="replace")
+            for row in df.itertuples(index=False, name=None):
+                row_bytes = serialize_row_length_safe(row)
                 hashes.append((hashlib.sha256(row_bytes).digest(),))
 
             initial_count = self.conn.execute(

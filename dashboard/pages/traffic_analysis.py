@@ -95,8 +95,10 @@ def _render_upload_section(manifest: IngestionManifest) -> None:
 
     st.markdown(
         f"""
-        <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">
+        <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.75rem; line-height: 1.5;">
             <span>Configured file size limit: <strong>{settings.ingestion.max_upload_size_mb} MB</strong> per file</span>
+            <span style="margin: 0 0.5rem;">•</span>
+            <span>Batch RAM buffer threshold: <strong>{settings.ingestion.max_batch_upload_size_mb:,} MB</strong></span>
             <span style="margin: 0 0.5rem;">•</span>
             <span>Local storage target: <code>data/raw/</code></span>
             <span style="margin: 0 0.5rem;">•</span>

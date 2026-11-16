@@ -6,6 +6,7 @@ labels, identifies non-finite numeric anomalies, and persists complete metadata.
 """
 
 from collections import Counter
+import csv
 import json
 import math
 import os
@@ -55,6 +56,88 @@ def detect_file_encoding(file_path: Path) -> str:
     except Exception as e:
         logger.warning(f"Error checking encoding for {file_path.name}: {e}")
         return "utf-8"
+
+
+def scan_csv_records_structural(
+    file_path: Path,
+    encoding: str,
+    expected_columns: int,
+) -> Tuple[bool, int, int, List[QualityIssueSample], Optional[str]]:
+    """Scan all logical records in the CSV file using standard csv.reader.
+
+    Establishes one consistent RFC 4180 logical-record definition.
+    Handles CRLF and LF line endings transparently.
+    Accurately parses quoted commas, embedded newlines, and escaped quotes.
+    Identifies inconsistent field counts and empty records without silently dropping rows.
+
+    Args:
+        file_path: Target CSV file path.
+        encoding: File character encoding.
+        expected_columns: Number of fields required per record based on header.
+
+    Returns:
+        (completed_without_syntax_error: bool,
+         valid_row_count: int,
+         invalid_row_count: int,
+         structural_issues: List[QualityIssueSample],
+         syntax_error_message: Optional[str])
+    """
+    valid_count = 0
+    invalid_count = 0
+    issues: List[QualityIssueSample] = []
+
+    try:
+        with open(file_path, "r", encoding=encoding, newline="", errors="replace") as f:
+            reader = csv.reader(f)
+            try:
+                _ = next(reader)  # Header row
+            except StopIteration:
+                return True, 0, 0, [], None
+
+            logical_row_idx = 0
+            for row in reader:
+                logical_row_idx += 1
+                row_len = len(row)
+                if row_len == expected_columns:
+                    valid_count += 1
+                else:
+                    invalid_count += 1
+                    if len(issues) < 10:  # Bound memory and preserve privacy
+                        if row_len == 0:
+                            desc = f"Empty record at logical row {logical_row_idx} (0 fields observed)."
+                            issue_type = "Empty Record"
+                        elif row_len < expected_columns:
+                            desc = (
+                                f"Inconsistent field count at logical row {logical_row_idx}: "
+                                f"expected {expected_columns} fields, observed {row_len}."
+                            )
+                            issue_type = "Missing Delimiters"
+                        else:
+                            desc = (
+                                f"Inconsistent field count at logical row {logical_row_idx}: "
+                                f"expected {expected_columns} fields, observed {row_len}."
+                            )
+                            issue_type = "Extra Delimiters"
+
+                        issues.append(
+                            QualityIssueSample(
+                                row_index=logical_row_idx,
+                                column_name="[Record Structure]",
+                                issue_type=issue_type,
+                                description=desc,
+                            )
+                        )
+
+        return True, valid_count, invalid_count, issues, None
+
+    except csv.Error as e:
+        # Fatal CSV parsing syntax error (e.g. unterminated quotation mark)
+        sanitized_msg = f"CSV syntax error: {type(e).__name__} ({str(e)})"
+        return False, valid_count, invalid_count, issues, sanitized_msg
+
+    except Exception as e:
+        sanitized_msg = f"File reading error: {type(e).__name__} ({str(e)})"
+        return False, valid_count, invalid_count, issues, sanitized_msg
 
 
 def save_preview_cache(
@@ -207,7 +290,93 @@ def validate_csv_dataset(
             "will be formally reconciled in CP-05 (Dataset Engineering)."
         )
 
-    # 2. Chunk-Based Bounded Memory Validation Loop
+    # 2. Structural Record Scan via RFC 4180 csv.reader
+    if progress_callback:
+        progress_callback(0.10, "Performing strict RFC 4180 structural record scan...")
+
+    (
+        scan_ok,
+        struct_valid_count,
+        struct_invalid_count,
+        struct_issues,
+        syntax_err,
+    ) = scan_csv_records_structural(file_path, encoding, total_cols)
+
+    # If parsing encountered fatal syntax error (e.g. unterminated quotation mark at EOF)
+    if not scan_ok:
+        record.validation_status = "Validation Failed"
+        sanitized_err = (
+            f"Complete row accounting could not be established due to CSV syntax error: {syntax_err}"
+        )
+        record.validation_errors.append(sanitized_err)
+        logger.error(sanitized_err)
+        record.total_rows = struct_valid_count + struct_invalid_count
+        record.valid_rows = struct_valid_count
+        record.invalid_rows = struct_invalid_count
+        manifest.add_or_update(record)
+        return record
+
+    # If structural inconsistencies exist (inconsistent field counts or empty lines)
+    if struct_invalid_count > 0:
+        record.validation_status = "Validation Failed"
+        err_msg = (
+            f"Structural verification failed: {struct_invalid_count:,} malformed records "
+            f"detected (e.g. inconsistent field counts or blank records). "
+            f"Expected {total_cols} fields per record."
+        )
+        record.validation_errors.append(err_msg)
+        logger.error(err_msg)
+        for issue in struct_issues:
+            record.validation_warnings.append(issue.description)
+
+        record.total_rows = struct_valid_count + struct_invalid_count
+        record.valid_rows = struct_valid_count
+        record.invalid_rows = struct_invalid_count
+
+        # Assemble columns with basic metadata
+        record.columns = [
+            ColumnMetadata(
+                name=col,
+                normalized_name=normalize_column_name(col),
+                dtype="unknown",
+                non_null_count=0,
+                missing_count=0,
+                missing_percentage=0.0,
+                unique_count=None,
+                classification=classify_column(col, "unknown", col == label_col, 0),
+                numeric_anomalies=0,
+            )
+            for col in columns
+        ]
+        manifest.add_or_update(record)
+        return record
+
+    # If file contains headers but 0 data records
+    if struct_valid_count == 0 and struct_invalid_count == 0:
+        logger.info(f"File {file_path.name} contains headers but 0 data rows.")
+        record.validation_warnings.append("Dataset contains 0 data rows (header only).")
+        record.total_rows = 0
+        record.valid_rows = 0
+        record.invalid_rows = 0
+        record.validation_status = "Validated with Warnings"
+        record.columns = [
+            ColumnMetadata(
+                name=col,
+                normalized_name=normalize_column_name(col),
+                dtype="unknown",
+                non_null_count=0,
+                missing_count=0,
+                missing_percentage=0.0,
+                unique_count=None,
+                classification=classify_column(col, "unknown", col == label_col, 0),
+                numeric_anomalies=0,
+            )
+            for col in columns
+        ]
+        manifest.add_or_update(record)
+        return record
+
+    # 3. Chunk-Based Bounded Memory Feature Telemetry & Quality Scan
     total_data_rows = 0
     valid_data_rows = 0
     invalid_data_rows = 0
@@ -224,15 +393,12 @@ def validate_csv_dataset(
     max_preview_limit = settings.ingestion.max_preview_rows
 
     if progress_callback:
-        progress_callback(0.15, "Initializing bounded-memory duplicate detection index...")
+        progress_callback(0.20, "Initializing bounded-memory duplicate detection index...")
 
-    # Estimate progress based on file size or chunk processing
-    bytes_processed = 0
     chunk_index = 0
 
     with DiskBackedDuplicateDetector(temp_dir=metadata_dir) as dup_detector:
         try:
-            # We enforce on_bad_lines='error' so that structural errors are caught and accounted for
             reader = pd.read_csv(
                 file_path,
                 chunksize=chunk_size,
@@ -283,31 +449,15 @@ def validate_csv_dataset(
                     col_numeric_anomalies[c] += count
 
                 if progress_callback:
-                    pct = min(0.15 + (chunk_index * 0.1), 0.85)
+                    pct = min(0.20 + (chunk_index * 0.1), 0.85)
                     progress_callback(
                         pct,
                         f"Processed batch {chunk_index} ({total_data_rows:,} rows scanned)...",
                     )
 
-        except pd.errors.EmptyDataError:
-            logger.info(f"File {file_path.name} contains headers but 0 data rows.")
-            record.validation_warnings.append("Dataset contains 0 data rows (header only).")
-
-        except pd.errors.ParserError as e:
-            # Fatal structural CSV parsing error encountered
-            record.validation_status = "Validation Failed"
-            err_msg = f"CSV parsing stopped due to structural error: {str(e)}"
-            record.validation_errors.append(err_msg)
-            logger.error(err_msg)
-            record.total_rows = total_data_rows
-            record.valid_rows = valid_data_rows
-            record.invalid_rows = 1  # Record failure point
-            manifest.add_or_update(record)
-            return record
-
         except Exception as e:
             record.validation_status = "Validation Incomplete"
-            err_msg = f"Validation halted unexpectedly: {str(e)}"
+            err_msg = f"Validation halted unexpectedly: {type(e).__name__} ({str(e)})"
             record.validation_errors.append(err_msg)
             logger.error(err_msg)
             record.total_rows = total_data_rows
@@ -315,6 +465,13 @@ def validate_csv_dataset(
             record.invalid_rows = invalid_data_rows
             manifest.add_or_update(record)
             return record
+
+        # Verify agreement between csv.reader structural scan and Pandas
+        if total_data_rows != struct_valid_count:
+            record.validation_warnings.append(
+                f"Parser count discrepancy: Pandas read {total_data_rows:,} records "
+                f"vs csv.reader structural count {struct_valid_count:,}."
+            )
 
         # Duplicate detector completion status
         if dup_detector.completion_error:
@@ -328,10 +485,14 @@ def validate_csv_dataset(
 
         duplicate_rows_count = dup_detector.total_duplicates
 
-    # 3. Final Invariants and Data Assembly
+    # 4. Final Invariants and Data Assembly
     record.total_rows = total_data_rows
     record.valid_rows = valid_data_rows
-    record.invalid_rows = invalid_data_rows
+    record.invalid_rows = 0
+    record.missing_value_rows = missing_value_rows
+    record.duplicate_rows = duplicate_rows_count
+    record.numeric_anomaly_count = numeric_anomaly_total
+    record.label_distribution = dict(label_counter)
     record.missing_value_rows = missing_value_rows
     record.duplicate_rows = duplicate_rows_count
     record.numeric_anomaly_count = numeric_anomaly_total

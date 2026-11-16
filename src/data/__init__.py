@@ -18,6 +18,7 @@ from src.data.data_quality import (
     DiskBackedDuplicateDetector,
     QualityIssueSample,
     detect_numeric_anomalies_in_chunk,
+    serialize_row_length_safe,
 )
 from src.data.ingestion_manifest import (
     ColumnMetadata,
@@ -50,6 +51,7 @@ __all__ = [
     "sanitize_filename",
     "save_preview_cache",
     "save_uploaded_csv",
+    "serialize_row_length_safe",
     "validate_csv_dataset",
     "verify_path_safety",
 ]

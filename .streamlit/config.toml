@@ -16,3 +16,4 @@ gatherUsageStats = false
 headless = true
 enableCORS = false
 enableXsrfProtection = true
+maxUploadSize = 500

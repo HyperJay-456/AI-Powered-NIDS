@@ -155,7 +155,8 @@ class IngestionConfig:
     """Configuration for CSV traffic upload, batch chunking, and validation."""
 
     default_chunk_size: int = 50_000
-    max_upload_size_mb: int = 1000
+    max_upload_size_mb: int = 500  # Accommodates largest single CIC-IDS-2017 benchmark CSV file (~450 MB)
+    max_batch_upload_size_mb: int = 1200  # Safe aggregate upload threshold for local RAM buffering
     min_disk_free_mb: int = 500
     allowed_extensions: Tuple[str, ...] = (".csv",)
     max_preview_rows: int = 100
