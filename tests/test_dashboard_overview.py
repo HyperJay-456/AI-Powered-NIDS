@@ -73,6 +73,38 @@ class TestDashboardOverview(unittest.TestCase):
         for cp_num in range(4, 13):
             self.assertEqual(status_by_code[f"CP-{cp_num:02d}"], "Planned")
 
+    def test_getting_started_csv_scope_and_prerequisites(self) -> None:
+        """Verify Getting Started steps emphasize CSV analysis and CP-04 upload availability."""
+        app = AppTest.from_file(APP_PATH, default_timeout=20).run()
+        self.assertEqual(len(app.exception), 0)
+
+        # Collect all markdown content
+        all_markdown = " ".join([m.value for m in app.markdown])
+
+        # Step 1: instruct preparing CIC-IDS-2017 files
+        self.assertIn("Prepare CIC-IDS-2017 Dataset Files", all_markdown)
+
+        # Step 2: CSV upload through Traffic Analysis in CP-04 (not requiring manual data/raw placement)
+        self.assertIn("Upload Network Traffic via Traffic Analysis", all_markdown)
+        self.assertIn("Checkpoint CP-04", all_markdown)
+
+        # Step 6: CSV-Based Intrusion Detection Analysis
+        self.assertIn("CSV-Based Intrusion Detection Analysis", all_markdown)
+
+        # Verify unverified claims and 'Real-Time Threat Detection' are not in overview markdown
+        self.assertNotIn("Real-Time Threat Detection", all_markdown)
+        self.assertNotIn("line-rate filtering", all_markdown)
+        self.assertNotIn("sub-millisecond inference latency", all_markdown)
+
+    def test_overview_labels_features_as_awaiting_validation(self) -> None:
+        """Verify the 78 features and filenames are designated as awaiting validation."""
+        app = AppTest.from_file(APP_PATH, default_timeout=20).run()
+        self.assertEqual(len(app.exception), 0)
+
+        all_markdown = " ".join([m.value for m in app.markdown])
+        self.assertIn("Awaiting CSV Validation", all_markdown)
+        self.assertIn("Awaiting Validation", all_markdown)
+
 
 if __name__ == "__main__":
     unittest.main()

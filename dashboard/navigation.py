@@ -59,7 +59,7 @@ ROUTES: List[Route] = [
         route_id="detection_center",
         label="Detection Center",
         icon="⚡",
-        description="Operational intrusion detection console",
+        description="CSV-based intrusion detection console",
         render_fn=detection_center.render,
     ),
     Route(

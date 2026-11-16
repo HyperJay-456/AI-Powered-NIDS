@@ -1,4 +1,4 @@
-"""Detection Center Page: Real-time threat classification and operational console."""
+"""Detection Center Page: CSV-based intrusion detection analysis and operational console."""
 
 import streamlit as st
 
@@ -10,7 +10,7 @@ def render() -> None:
     """Render the Detection Center view."""
     page_header(
         title="Intrusion Detection Center",
-        subtitle="Operational threat monitoring, intrusion alert console, and decision thresholding",
+        subtitle="CSV-based intrusion detection analysis, alert thresholding, and forensic triage",
         icon="⚡",
         badge_text="Scheduled for CP-08",
         badge_variant="warning",
@@ -20,13 +20,13 @@ def render() -> None:
         checkpoint_id="CP-08",
         title="Intrusion Detection Engine",
         description=(
-            "The operational intrusion detection console will execute low-latency, "
-            "sub-50ms inference on incoming network flows using pre-trained SVM, MLP, "
+            "The operational intrusion detection console will execute CSV-based intrusion detection "
+            "analysis on uploaded network flow batches using pre-trained SVM, MLP, "
             "and Decision Tree estimators."
         ),
         planned_capabilities=[
             "Single-flow vector manual inspection simulator",
-            "Micro-batch live network flow classifier",
+            "Batch network flow record classifier from uploaded CSV files",
             "Configurable probability thresholds for alert escalation",
             "Multi-tiered severity scoring (Benign, Low, Medium, High, Critical)",
             "Automated incident alert queue and mitigation recommendations",

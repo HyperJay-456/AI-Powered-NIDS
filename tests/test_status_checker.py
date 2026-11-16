@@ -112,6 +112,21 @@ class TestStatusChecker(unittest.TestCase):
             code = f"CP-{i:02d}"
             self.assertEqual(milestone_dict[code].status, "Planned")
 
+    def test_decision_tree_unverified_claims_removed(self) -> None:
+        """Verify Decision Tree description contains no unverified latency or line-rate claims."""
+        status = check_model_status()
+        dt_desc = status.models["decision_tree"].description.lower()
+        self.assertNotIn("sub-millisecond", dt_desc)
+        self.assertNotIn("line-rate", dt_desc)
+        self.assertNotIn("<1ms", dt_desc)
+
+    def test_cp08_milestone_scope_and_claims(self) -> None:
+        """Verify CP-08 milestone description specifies CSV-based intrusion detection without unverified claims."""
+        milestones = {m.code: m for m in get_project_milestones()}
+        cp08_desc = milestones["CP-08"].description
+        self.assertNotIn("sub-50ms", cp08_desc.lower())
+        self.assertIn("CSV-based", cp08_desc)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -164,7 +164,10 @@ def check_model_status(models_dir: Optional[Path] = None) -> ModelSystemStatus:
         "decision_tree": {
             "name": "Decision Tree",
             "category": "Recursive Binary Partitioning (CART)",
-            "desc": "Executes rapid, deterministic rule-based binary splits with sub-millisecond inference latency suitable for line-rate filtering.",
+            "desc": (
+                "Constructs a hierarchical decision tree using recursive binary splitting "
+                "on feature thresholds to classify network traffic into benign or attack categories."
+            ),
             "filenames": ["decision_tree.joblib", "decision_tree.pkl", "decision_tree_model.joblib", "dt.joblib"],
         },
     }
@@ -303,7 +306,7 @@ def get_project_milestones() -> List[ProjectMilestone]:
         ProjectMilestone("CP-05", "Dataset Engineering", "Planned", "neutral", "CIC-IDS-2017 cleaning, infinity handling & robust scaling"),
         ProjectMilestone("CP-06", "ML Training Pipeline", "Planned", "neutral", "Unified trainer for SVM, MLP, Decision Tree & serialization"),
         ProjectMilestone("CP-07", "Model Evaluation Laboratory", "Planned", "neutral", "Cross-validation, confusion matrices, ROC-AUC & latency"),
-        ProjectMilestone("CP-08", "Intrusion Detection Engine", "Planned", "neutral", "Sub-50ms inference engine & severity alert thresholding"),
+        ProjectMilestone("CP-08", "Intrusion Detection Engine", "Planned", "neutral", "CSV-based intrusion detection engine & alert thresholding"),
         ProjectMilestone("CP-09", "Threat Intelligence & Prediction Explorer", "Planned", "neutral", "Attack taxonomy mapping, MITRE ATT&CK & explainability"),
         ProjectMilestone("CP-10", "Reports & Exports", "Planned", "neutral", "Executive threat reports & forensic CSV audit exports"),
         ProjectMilestone("CP-11", "Integration, Testing & Optimization", "Planned", "neutral", "End-to-end integration testing & performance profiling"),

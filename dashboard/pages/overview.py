@@ -26,8 +26,8 @@ def _render_header() -> None:
     page_header(
         title="Network Security Overview",
         subtitle=(
-            "AI-Powered Network Intrusion Detection System analyzing network flow telemetry "
-            "against CIC-IDS-2017 attack signatures using SVM, MLP, and Decision Tree architectures."
+            "AI-Powered Network Intrusion Detection System designed for CSV-based intrusion detection analysis "
+            "against CIC-IDS-2017 benchmark telemetry using SVM, MLP, and Decision Tree architectures."
         ),
         icon="🛡️",
         badges=[
@@ -100,9 +100,9 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
                 <div class="nids-card-title">Specification Parameters</div>
                 <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.8;">
                     <div><strong>Target Corpus:</strong> {dataset_status.target_dataset_name}</div>
-                    <div><strong>Expected Input:</strong> {dataset_status.expected_format} (Flow Telemetry)</div>
-                    <div><strong>Storage Location:</strong> <code>{dataset_status.storage_path}</code></div>
-                    <div><strong>Feature Dimension:</strong> 78 Statistical Attributes</div>
+                    <div><strong>Expected Input:</strong> {dataset_status.expected_format} (Flow Telemetry CSV)</div>
+                    <div><strong>Local Storage Target:</strong> <code>{dataset_status.storage_path}</code></div>
+                    <div><strong>Expected Feature Dimension:</strong> ~78 Statistical Attributes (Awaiting CSV Validation)</div>
                 </div>
             </div>
             """,
@@ -122,7 +122,7 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
                 <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.6;">
                     <div><strong>Detected Files:</strong> {dataset_status.file_count} compatible CSVs</div>
                     <div><strong>Directory Status:</strong> Initialized (Read-only verified)</div>
-                    <div><strong>Ingestion Status:</strong> Awaiting CP-05 Pipeline</div>
+                    <div><strong>Ingestion Status:</strong> Planned for CP-04 / CP-05</div>
                 </div>
             </div>
             """,
@@ -135,9 +135,10 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
         info_panel(
             title="Dataset Availability Notice",
             message=(
-                f"No compatible CSV files were detected in '{dataset_status.storage_path}'. "
-                f"The system expects raw CIC-IDS-2017 network traffic CSVs in this directory. "
-                "Dataset files will be processed and validated during Checkpoint CP-05 (Dataset Engineering)."
+                f"No compatible CSV files are currently detected in the local repository storage directory ('{dataset_status.storage_path}'). "
+                "Users may prepare the CIC-IDS-2017 CSV files in advance. Automated CSV upload through the "
+                "Traffic Analysis module will become available in Checkpoint CP-04 (Traffic Upload & Data Explorer) "
+                "without requiring manual filesystem placement."
             ),
             icon="ℹ️",
         )
@@ -145,8 +146,15 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
     # Verification checklist of expected raw flow files
     st.markdown(
         "<div style='font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; "
-        "letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.5rem;'>"
-        "Expected Benchmark Flow Files:</div>",
+        "letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.25rem;'>"
+        "Expected Benchmark Flow Files (Kaggle Specification — Awaiting Validation):</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<p style='font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.75rem;'>"
+        "Note: The 8 filenames and ~78 feature dimension reflect the standard CIC-IDS-2017 Kaggle distribution specification. "
+        "Exact filenames and column schemas are treated as expected specifications awaiting validation upon CSV ingestion in CP-04/05."
+        "</p>",
         unsafe_allow_html=True,
     )
 
@@ -157,7 +165,7 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
             "Expected Flow File": fname,
             "Presence Status": "Available" if is_present else "Not Present",
             "Target Path": f"data/raw/{fname}",
-            "Pipeline Stage": "CP-04 / CP-05",
+            "Validation Stage": "Awaiting Validation (CP-04/05)",
         })
     styled_table(file_checklist)
 
@@ -166,7 +174,7 @@ def _render_ml_model_overview_section(model_status: ModelSystemStatus) -> None:
     """Render Section D: Machine Learning Model Overview (Strictly 3 authorized algorithms)."""
     section_header(
         title="Machine Learning Model Architectures",
-        description="Status of the three authorized machine learning models (strictly SVM, MLP, Decision Tree):",
+        description="Status of the three authorized machine learning models (strictly SVM, MLP, Decision Tree) planned for implementation in CP-06:",
     )
 
     col1, col2, col3 = st.columns(3)
@@ -206,7 +214,7 @@ def _render_detection_pipeline_section() -> None:
     """Render Section E: Detection Pipeline Overview."""
     section_header(
         title="End-to-End Detection Pipeline",
-        description="Operational workflow connecting raw flow CSVs to forensic threat reporting:",
+        description="Planned operational workflow connecting raw flow CSVs to forensic threat reporting:",
     )
 
     stages = get_detection_pipeline_stages()
@@ -270,17 +278,45 @@ def _render_getting_started_section() -> None:
     """Render Section G: Getting Started Section."""
     section_header(
         title="Getting Started Workflow",
-        description="Sequential workflow to execute end-to-end intrusion detection on network flows:",
+        description="Sequential workflow to execute end-to-end CSV-based intrusion detection analysis on network flows:",
     )
 
     steps = [
-        ("Prepare Network Traffic CSV", "Obtain benchmark network flow records formatted according to the CIC-IDS-2017 feature specification.", "Prerequisite"),
-        ("Upload Network Traffic File", "Ingest and validate the CSV flow records through the Traffic Upload interface.", "Upcoming: CP-04"),
-        ("Execute Dataset Engineering", "Clean missing values, remediate infinite flow rates, and apply robust scaling.", "Upcoming: CP-05"),
-        ("Train Authorized ML Models", "Train Support Vector Machine, Multilayer Perceptron, and Decision Tree estimators.", "Upcoming: CP-06"),
-        ("Benchmark & Evaluate Performance", "Review 5-fold cross-validation metrics, confusion matrices, ROC-AUC, and latency.", "Upcoming: CP-07"),
-        ("Run Intrusion Detection Engine", "Feed single flows or micro-batches into trained models for real-time threat categorization.", "Upcoming: CP-08"),
-        ("Analyze Threat Predictions & Export", "Inspect feature discriminators, review threat intelligence, and export forensic logs.", "Upcoming: CP-09 & CP-10"),
+        (
+            "Prepare CIC-IDS-2017 Dataset Files",
+            "Prepare the CIC-IDS-2017 benchmark CSV files from official or repository sources for traffic analysis.",
+            "Prerequisite",
+        ),
+        (
+            "Upload Network Traffic via Traffic Analysis",
+            "CSV upload and automated schema validation through the Traffic Analysis module will become available in Checkpoint CP-04.",
+            "Upcoming: CP-04",
+        ),
+        (
+            "Execute Dataset Engineering",
+            "Clean missing values, remediate infinite flow rates, and apply robust scaling to flow feature matrices.",
+            "Upcoming: CP-05",
+        ),
+        (
+            "Train Authorized ML Models",
+            "Train Support Vector Machine, Multilayer Perceptron, and Decision Tree estimators on validated training splits.",
+            "Upcoming: CP-06",
+        ),
+        (
+            "Benchmark & Evaluate Performance",
+            "Review 5-fold cross-validation metrics, confusion matrices, ROC-AUC curves, and empirical inference timing.",
+            "Upcoming: CP-07",
+        ),
+        (
+            "CSV-Based Intrusion Detection Analysis",
+            "Execute batch or sample flow classification on uploaded network traffic CSVs using trained models.",
+            "Upcoming: CP-08",
+        ),
+        (
+            "Analyze Threat Predictions & Export",
+            "Inspect feature discriminators, review threat intelligence taxonomies, and export forensic audit logs.",
+            "Upcoming: CP-09 & CP-10",
+        ),
     ]
 
     st.markdown('<div class="nids-step-list">', unsafe_allow_html=True)

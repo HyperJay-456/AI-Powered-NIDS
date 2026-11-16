@@ -52,7 +52,7 @@ def render() -> None:
             """
             **Multilayer Perceptron (MLP)**
             - *Paradigm:* Feedforward Neural Architecture.
-            - *Rationale:* Models highly complex non-linear correlations and cross-feature interactions across 78 continuous network flow statistics.
+            - *Rationale:* Models complex non-linear correlations and cross-feature interactions across expected CIC-IDS-2017 continuous network flow statistics (specification awaiting validation in CP-04/05).
             """
         )
     with col3:
@@ -60,7 +60,7 @@ def render() -> None:
             """
             **Decision Tree (CART)**
             - *Paradigm:* Recursive Binary Partitioning.
-            - *Rationale:* Ultra-fast deterministic inference (<1ms per sample), directly interpretable decision paths, and natural handling of non-linear thresholds.
+            - *Rationale:* Deterministic hierarchical decision logic, directly interpretable split paths, and robust handling of non-linear attribute thresholds.
             """
         )
 

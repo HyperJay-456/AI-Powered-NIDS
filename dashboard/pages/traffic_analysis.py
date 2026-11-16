@@ -22,8 +22,8 @@ def render() -> None:
         checkpoint_id="CP-04",
         title="Traffic Upload & Data Explorer",
         description=(
-            "This module will provide real-time and batch network flow ingestion, "
-            "schema validation against the 78 CIC-IDS-2017 features, and interactive "
+            "This module will provide CSV-based network flow ingestion and batch analysis, "
+            "schema validation against expected CIC-IDS-2017 features (awaiting validation in CP-04), and interactive "
             "tabular telemetry analysis."
         ),
         planned_capabilities=[
