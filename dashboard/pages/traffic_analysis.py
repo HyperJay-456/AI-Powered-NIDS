@@ -25,7 +25,11 @@ from dashboard.components.panels import (
     success_panel,
     warning_panel,
 )
-from src.data.csv_ingestion import format_file_size, save_uploaded_csv
+from src.data.csv_ingestion import (
+    check_batch_upload_limits,
+    format_file_size,
+    save_uploaded_csv,
+)
 from src.data.csv_validator import load_preview_cache, validate_csv_dataset
 from src.data.ingestion_manifest import DatasetRecord, IngestionManifest
 from src.utils.logger import get_logger
@@ -135,12 +139,34 @@ def _render_upload_section(manifest: IngestionManifest) -> None:
         ]
         styled_table(staged_data)
 
+        # Evaluate aggregate batch threshold post-upload
+        batch_valid, batch_bytes, batch_msg = check_batch_upload_limits(uploaded_files)
+
+        st.markdown(
+            f"""
+            <div style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0.5rem 0 0.75rem 0; line-height: 1.4;">
+                <em>Upload Memory Note:</em> Streamlit buffers uploaded files in web process memory upon receipt.
+                The aggregate limit ({settings.ingestion.max_batch_upload_size_mb:,} MB) prevents downstream storage
+                processing of oversized batches, but does not prevent Streamlit's initial multipart upload memory buffer.
+                Staged files are ingested sequentially into local storage.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if not batch_valid:
+            error_panel(
+                title="Aggregate Batch Limit Exceeded",
+                message=batch_msg,
+            )
+
         col_btn, _ = st.columns([1, 2])
         with col_btn:
             import_clicked = st.button(
                 "🚀 Import & Validate Files",
                 type="primary",
                 use_container_width=True,
+                disabled=not batch_valid,
                 key="btn_import_validate",
             )
 

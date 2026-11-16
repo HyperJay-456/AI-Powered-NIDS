@@ -34,7 +34,8 @@ class QualityIssueSample:
 def serialize_row_length_safe(row: Tuple[Any, ...]) -> bytes:
     """Deterministically serialize a tuple of cell values into length-prefixed bytes.
 
-    Eliminates delimiter collision vulnerabilities (e.g., ['ab', 'c'] vs ['a', 'bc'],
+    Provides unambiguous serialization for supported input values, eliminating delimiter
+    and boundary collision vulnerabilities (e.g., ['ab', 'c'] vs ['a', 'bc'],
     ['a|b', 'c'] vs ['a', 'b|c'], embedded commas, newlines, and distinguishes
     missing/null values from empty strings or literal sentinel strings).
 
@@ -53,10 +54,24 @@ def serialize_row_length_safe(row: Tuple[Any, ...]) -> bytes:
 
 
 class DiskBackedDuplicateDetector:
-    """Bounded-memory exact duplicate row detector powered by a disk-backed SQLite index.
+    """Bounded-memory duplicate row detector powered by a disk-backed SQLite index.
 
-    Calculates cryptographic SHA-256 fingerprints for each row and tracks collisions
-    across chunk boundaries without keeping full dataset tables in system RAM.
+    Computes collision-resistant SHA-256 fingerprints for each row using unambiguous
+    length-safe serialization and tracks duplicate occurrences across chunk boundaries
+    without accumulating dataset records in system RAM.
+
+    Architectural & Complexity Characteristics:
+      - Memory Consumption: Strictly bounded by configured page cache (~2 MB) plus
+        the current chunk's working buffer (chunk_size * max_row_bytes), independently
+        of the total dataset row count N, subject to maximum individual row size.
+      - Disk Usage Growth: Disk storage grows linearly O(U) with the number of unique
+        records U (<= N), storing a 32-byte binary digest plus B-tree page overhead
+        (~40-48 bytes per unique row on disk).
+      - Time Complexity: O(N log U) where N is total rows and U is unique rows, corresponding
+        to B-Tree insertion and uniqueness verification.
+      - Exact-Row Comparison: In high-assurance verification policies where theoretical
+        cryptographic hash collisions cannot be accepted, exact raw-byte comparison of
+        candidate duplicate matches can be performed as a fallback validation step.
     """
 
     def __init__(self, temp_dir: Optional[Path] = None):
@@ -77,10 +92,11 @@ class DiskBackedDuplicateDetector:
             self.temp_file = Path(path_str)
 
             self.conn = sqlite3.connect(str(self.temp_file))
-            # Configure SQLite for fast write throughput with bounded cache
+            # Configure SQLite with strict memory bounds and disk-backed temp storage
             self.conn.execute("PRAGMA synchronous = OFF;")
-            self.conn.execute("PRAGMA journal_mode = MEMORY;")
-            self.conn.execute("PRAGMA cache_size = -2000;")  # ~2 MB cache
+            self.conn.execute("PRAGMA journal_mode = OFF;")  # Ephemeral index: no rollback journal in RAM
+            self.conn.execute("PRAGMA temp_store = FILE;")   # Spill temporary B-trees to disk, not RAM
+            self.conn.execute("PRAGMA cache_size = -2000;")  # Strictly cap page cache to ~2 MB RAM
 
             self.conn.execute(
                 "CREATE TABLE IF NOT EXISTS fingerprints (fp_hash BLOB PRIMARY KEY);"

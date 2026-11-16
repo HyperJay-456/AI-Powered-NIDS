@@ -2,6 +2,7 @@
 
 from src.data.csv_ingestion import (
     IngestionResult,
+    check_batch_upload_limits,
     check_disk_space,
     format_file_size,
     sanitize_filename,
@@ -39,6 +40,7 @@ __all__ = [
     "IngestionManifest",
     "IngestionResult",
     "QualityIssueSample",
+    "check_batch_upload_limits",
     "check_disk_space",
     "classify_column",
     "detect_duplicate_columns",

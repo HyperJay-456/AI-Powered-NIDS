@@ -140,6 +140,52 @@ def check_disk_space(
         return True, 0, "Disk space check unverified."
 
 
+def check_batch_upload_limits(
+    uploaded_files: Any,
+    max_batch_mb: Optional[int] = None,
+) -> Tuple[bool, int, str]:
+    """Verify whether an uploaded multi-file batch exceeds aggregate size thresholds.
+
+    IMPORTANT ARCHITECTURAL NOTE:
+    Streamlit's file uploader buffers uploaded files in server memory upon receipt
+    over HTTP multipart transport. This check evaluates aggregate size AFTER
+    in-memory buffering occurs; it prevents downstream storage processing and disk
+    allocation for oversized batches, but does not prevent Streamlit's initial
+    HTTP upload memory allocation.
+
+    Args:
+        uploaded_files: List or iterable of uploaded file objects (having .size or stream).
+        max_batch_mb: Maximum allowed aggregate batch size in MB.
+            Defaults to settings.ingestion.max_batch_upload_size_mb.
+
+    Returns:
+        Tuple of (is_within_limit: bool, total_bytes: int, message: str).
+    """
+    max_batch_mb = max_batch_mb or settings.ingestion.max_batch_upload_size_mb
+    max_batch_bytes = max_batch_mb * 1024 * 1024
+
+    total_bytes = 0
+    if uploaded_files:
+        for f in uploaded_files:
+            if hasattr(f, "size") and f.size is not None:
+                total_bytes += int(f.size)
+            elif hasattr(f, "seek") and hasattr(f, "tell"):
+                pos = f.tell()
+                f.seek(0, os.SEEK_END)
+                total_bytes += f.tell()
+                f.seek(pos)
+
+    if total_bytes > max_batch_bytes:
+        msg = (
+            f"Aggregate batch size ({format_file_size(total_bytes)}) exceeds configured "
+            f"batch threshold of {max_batch_mb} MB. "
+            "Please upload fewer or smaller CSV files in each batch."
+        )
+        return False, total_bytes, msg
+
+    return True, total_bytes, "Aggregate batch size within configured limits."
+
+
 def compute_stream_sha256_and_size(
     stream: Union[BinaryIO, Any],
 ) -> Tuple[str, int]:
