@@ -1,45 +1,81 @@
 # Project Execution Plan: AI-Powered Network Intrusion Detection System (NIDS)
 
-This document formalizes the phased checkpoint roadmap for the design, implementation, validation, and presentation of the academic AI-Powered Network Intrusion Detection System.
+This document formalizes the comprehensive 12-checkpoint execution roadmap for the design, implementation, validation, and production deployment of the academic AI-Powered Network Intrusion Detection System.
 
 ---
 
-## Checkpoint Overview
+## 12-Checkpoint Executive Roadmap
 
 ```
 +---------------------------------------------------------------------------------------+
-|  CP-01: Foundation & Modular Architecture (CURRENT)                                   |
-|  - Workspace layout, centralized configuration, app.py, docs, Git ignore rules        |
+|  CP-01: Project Foundation (COMPLETED)                                                |
+|  - Workspace layout, centralized settings, documentation, app.py, Git initialization  |
 +-------------------------------------------+-------------------------------------------+
                                             | Human Approval Gate
                                             v
 +---------------------------------------------------------------------------------------+
-|  CP-02: Data Pipeline & Preprocessing                                                 |
-|  - CIC-IDS-2017 loader, cleaning (inf/NaN), feature scaling, train/test splitting      |
+|  CP-02: UI Design System                                                              |
+|  - Cyber-themed design tokens, color palette, responsive typography, custom components |
 +-------------------------------------------+-------------------------------------------+
                                             | Human Approval Gate
                                             v
 +---------------------------------------------------------------------------------------+
-|  CP-03: Model Engineering & Training                                                  |
-|  - Pipelines for SVM, MLP, and Decision Tree; hyperparameter tuning & serialization   |
+|  CP-03: Application Dashboard                                                         |
+|  - Executive dashboard, telemetry overview, pipeline status, system health monitoring |
 +-------------------------------------------+-------------------------------------------+
                                             | Human Approval Gate
                                             v
 +---------------------------------------------------------------------------------------+
-|  CP-04: Rigorous Evaluation & Benchmarking                                            |
-|  - Accuracy, Precision, Recall, F1, ROC-AUC, confusion matrices, latency benchmarks   |
+|  CP-04: Traffic Upload & Data Explorer                                                |
+|  - CSV/PCAP flow uploader, schema validator, dynamic filtering, descriptive telemetry |
 +-------------------------------------------+-------------------------------------------+
                                             | Human Approval Gate
                                             v
 +---------------------------------------------------------------------------------------+
-|  CP-05: Streamlit Interactive Dashboard & Live Inspection                             |
-|  - Telemetry UI, model comparison dashboard, interactive flow classification shell    |
+|  CP-05: Dataset Engineering                                                           |
+|  - CIC-IDS-2017 ingestion, infinity/NaN remediation, feature scaling, stratified split|
 +-------------------------------------------+-------------------------------------------+
                                             | Human Approval Gate
                                             v
 +---------------------------------------------------------------------------------------+
-|  CP-06: Verification, Final Academic Audit & Delivery                                 |
-|  - End-to-end regression testing, comprehensive documentation, final deliverables     |
+|  CP-06: ML Training Pipeline                                                          |
+|  - Unified pipeline for SVM, MLP, and Decision Tree; hyperparameter tuning & saving   |
++-------------------------------------------+-------------------------------------------+
+                                            | Human Approval Gate
+                                            v
++---------------------------------------------------------------------------------------+
+|  CP-07: Model Evaluation Laboratory                                                   |
+|  - Cross-validation, Confusion Matrices, ROC-AUC, Precision, Recall, F1, Latency profile|
++-------------------------------------------+-------------------------------------------+
+                                            | Human Approval Gate
+                                            v
++---------------------------------------------------------------------------------------+
+|  CP-08: Intrusion Detection Engine                                                    |
+|  - Real-time classification engine, low-latency inference, thresholding & alerts       |
++-------------------------------------------+-------------------------------------------+
+                                            | Human Approval Gate
+                                            v
++---------------------------------------------------------------------------------------+
+|  CP-09: Threat Intelligence & Prediction Explorer                                     |
+|  - Deep-dive prediction analysis, attack taxonomy mapping, feature importance/SHAP    |
++-------------------------------------------+-------------------------------------------+
+                                            | Human Approval Gate
+                                            v
++---------------------------------------------------------------------------------------+
+|  CP-10: Reports & Exports                                                             |
+|  - Automated PDF/CSV diagnostic reports, audit trails, benchmark export generator    |
++-------------------------------------------+-------------------------------------------+
+                                            | Human Approval Gate
+                                            v
++---------------------------------------------------------------------------------------+
+|  CP-11: Integration, Testing & Optimization                                           |
+|  - End-to-end integration tests, latency optimization, memory profiling, test coverage|
++-------------------------------------------+-------------------------------------------+
+                                            | Human Approval Gate
+                                            v
++---------------------------------------------------------------------------------------+
+|  CP-12: Deployment & Release                                                          |
+|  - Containerization / release packaging, user guides, academic defense deliverables    |
 +---------------------------------------------------------------------------------------+
 ```
 
@@ -47,115 +83,178 @@ This document formalizes the phased checkpoint roadmap for the design, implement
 
 ## Detailed Checkpoint Specifications
 
-### CP-01: Project Foundation & Architecture
-- **Status:** **COMPLETED** (Pending Final User Acceptance)
-- **Primary Objective:** Establish an enterprise-grade, reproducible project foundation, directory structure, centralized configuration, dependency manifests, and documentation baseline.
+### CP-01: Project Foundation
+- **Status:** **COMPLETED** (Baseline Established)
+- **Objective:** Establish the clean, modular Python repository architecture, centralized configuration management, dependency specifications, and version control rules.
 - **Key Deliverables:**
-  - Workspace inspection and clean directory layout (`config/`, `src/`, `data/`, `models/`, `tests/`).
-  - `config/settings.py` for centralized project configuration and path management.
-  - `app.py` executable Streamlit entry point.
-  - `requirements.txt` with locked version ranges for Streamlit, pandas, numpy, scikit-learn, joblib, and matplotlib/seaborn.
-  - Comprehensive `.gitignore` protecting datasets, binaries, secrets, and virtual environments.
-  - Professional `README.md`, `ARCHITECTURE.md`, and `PROJECT_PLAN.md`.
-  - Initialized Git repository and local verification tests (`tests/test_config.py`).
+  - Standard directory hierarchy: `config/`, `src/` (`data/`, `features/`, `models/`, `evaluation/`, `utils/`), `data/` (`raw/`, `processed/`), `models/saved/`, `tests/`.
+  - [config/settings.py](file:///c:/Projects/ML%20Mini%20Project/config/settings.py) centralized configuration module.
+  - [app.py](file:///c:/Projects/ML%20Mini%20Project/app.py) main Streamlit entry point.
+  - [requirements.txt](file:///c:/Projects/ML%20Mini%20Project/requirements.txt) with locked dependency ranges.
+  - [.gitignore](file:///c:/Projects/ML%20Mini%20Project/.gitignore) excluding datasets, models, virtual environments, and secrets.
+  - [README.md](file:///c:/Projects/ML%20Mini%20Project/README.md), [ARCHITECTURE.md](file:///c:/Projects/ML%20Mini%20Project/ARCHITECTURE.md), and [PROJECT_PLAN.md](file:///c:/Projects/ML%20Mini%20Project/PROJECT_PLAN.md).
+  - Git repository initialization and baseline verification tests.
 - **Acceptance Criteria:**
-  - All target folders and configuration modules exist and resolve absolute paths correctly.
-  - Unit tests pass with zero errors.
-  - `app.py` executes without syntax or runtime import errors.
-  - No datasets, model binaries, fake statistics, or unauthorized algorithms exist in the repository.
+  - Workspace structure conforms to enterprise Python standards.
+  - `tests/test_config.py` passes with zero failures.
+  - `app.py` executes cleanly without unhandled syntax or import errors.
+  - No datasets, model binaries, mock logic, or unauthorized algorithms exist in Git.
 
 ---
 
-### CP-02: Data Ingestion, Cleansing & Preprocessing (CIC-IDS-2017)
-- **Status:** **PLANNED** (Blocked on Human Approval for CP-01)
-- **Primary Objective:** Build an automated, memory-efficient data engineering pipeline for the Kaggle CIC-IDS-2017 dataset.
+### CP-02: UI Design System
+- **Status:** **PLANNED** (Next Checkpoint — Awaiting Human Approval)
+- **Objective:** Establish a cohesive, professional cybersecurity design system, styling architecture, and reusable UI components in Streamlit.
 - **Key Deliverables:**
-  - `src/data/loader.py`: Safe, chunked CSV ingestion for multi-gigabyte traffic flow logs.
-  - `src/data/preprocessor.py`: Column sanitization, numeric parsing, handling positive/negative infinities (common in `Flow Bytes/s`), and missing value imputation.
-  - `src/features/scaler.py`: Robust / Standard scaling fit strictly on training splits.
-  - `src/features/encoder.py`: Multi-class and binary attack categorization mappings.
-  - `src/data/split.py`: Stratified train-validation-test data partitioning.
-  - `tests/test_data_pipeline.py`: Unit tests validating zero data leakage, schema conformity, and absence of NaNs/infs.
+  - Custom CSS theme and design tokens (dark-mode cybersecurity palette, high-contrast threat indicators, typography).
+  - Reusable Streamlit UI components: KPI metric cards, threat alert banners, status pills, and data containers.
+  - Consistent layout scaffolding across sidebar and main viewports.
 - **Acceptance Criteria:**
-  - Data ingestion pipeline processes all 8 CIC-IDS-2017 traffic subsets cleanly.
-  - Processed data outputs contain 0 NaNs and 0 infinite values.
-  - Stratified split accurately maintains class proportions across rare attack families.
-  - Preprocessing artifacts (fitted scalers and label encoders) serialized to disk.
+  - Consistent styling across all viewports.
+  - Clear visual hierarchy with zero layout shifts or broken responsive elements.
 
 ---
 
-### CP-03: Model Engineering & Training
-- **Status:** **PLANNED** (Blocked on CP-02 completion)
-- **Primary Objective:** Implement, train, tune, and serialize the three authorized machine learning models.
+### CP-03: Application Dashboard
+- **Status:** **PLANNED**
+- **Objective:** Implement the central executive application dashboard presenting real-time system state, telemetry overview, and pipeline orchestration.
+- **Key Deliverables:**
+  - System telemetry overview: active environment, hardware utilization, dataset readiness, and model registry status.
+  - Interactive pipeline status board mapping data and model progression.
+  - Navigation controls linking into downstream exploration and inspection modules.
+- **Acceptance Criteria:**
+  - Dashboard loads instantaneously without mock data or fabricated metrics.
+  - Accurately reports presence or absence of underlying dataset and model assets.
+
+---
+
+### CP-04: Traffic Upload & Data Explorer
+- **Status:** **PLANNED**
+- **Objective:** Build an interactive network flow data exploration interface with file upload and dynamic tabular inspection.
+- **Key Deliverables:**
+  - Network flow file uploader supporting CSV and sample flow records.
+  - Interactive DataFrame explorer with column filtering, search, and sorting.
+  - Summary statistics panel: flow duration distributions, packet length aggregates, protocol breakdown.
+- **Acceptance Criteria:**
+  - Safely handles uploads up to configured size limits with informative error messages.
+  - Validates flow schema against standard CIC-IDS-2017 feature definitions.
+
+---
+
+### CP-05: Dataset Engineering
+- **Status:** **PLANNED**
+- **Objective:** Build the automated, memory-efficient data engineering pipeline for the CIC-IDS-2017 benchmark dataset.
+- **Key Deliverables:**
+  - Memory-safe chunked loader for CIC-IDS-2017 CSV flow records.
+  - Data sanitization pipeline: column whitespace stripping, numeric conversion, infinity (`inf` / `-inf`) replacement, and missing value imputation.
+  - Feature transformation: `RobustScaler` / `StandardScaler` fitted strictly on training data.
+  - Label encoding for both binary (Benign vs. Attack) and multi-class (15 attack categories) taxonomies.
+  - Stratified train-validation-test split (70% train, 10% validation, 20% test).
+- **Acceptance Criteria:**
+  - Preprocessing generates zero NaNs and zero infinite values.
+  - Zero data leakage between train and test partitions.
+  - Serialized preprocessor artifacts saved in `models/saved/`.
+
+---
+
+### CP-06: ML Training Pipeline
+- **Status:** **PLANNED**
+- **Objective:** Implement, train, optimize, and serialize the three authorized machine learning models.
 - **Authorized Models:**
-  1. **Support Vector Machine (SVM):** Linear and RBF kernel classifiers with probability estimation.
-  2. **Multilayer Perceptron (MLP):** Feedforward artificial neural network with early stopping.
-  3. **Decision Tree (DT):** CART classifier with pre-pruned depth and leaf constraints.
+  1. **Support Vector Machine (SVM):** Maximum-margin linear/RBF kernel classifier.
+  2. **Multilayer Perceptron (MLP):** Feedforward artificial neural network with backpropagation and early stopping.
+  3. **Decision Tree (CART):** Recursive partitioning tree with depth and leaf constraints.
 - **Key Deliverables:**
-  - `src/models/base.py`: Abstract base class enforcing uniform estimator interface (`fit`, `predict`, `predict_proba`, `save`, `load`).
-  - `src/models/svm_model.py`: SVM implementation and cross-validation trainer.
-  - `src/models/mlp_model.py`: Neural network implementation and convergence monitor.
-  - `src/models/decision_tree.py`: Decision tree implementation with tree depth profiling.
-  - `models/saved/`: Serialized models and training metadata saved via `joblib`.
-  - `tests/test_models.py`: Unit tests asserting model instantiation, prediction shapes, and serialization round-trips.
+  - Unified base estimator interface (`fit`, `predict`, `predict_proba`, `save`, `load`).
+  - Model trainers with cross-validation and hyperparameter tuning.
+  - Model serialization engine saving verified artifacts to `models/saved/`.
 - **Acceptance Criteria:**
-  - Strictly 3 models implemented (no auxiliary or unauthorized models).
-  - All models train to convergence without numerical instability.
-  - Serialized model artifacts load and reproduce identical predictions.
+  - Strictly the 3 authorized algorithms implemented (no random forests, gradient boosting, or unapproved models).
+  - All models train to convergence and serialize cleanly via `joblib`.
 
 ---
 
-### CP-04: Model Evaluation & Benchmarking
-- **Status:** **PLANNED** (Blocked on CP-03 completion)
-- **Primary Objective:** Conduct an empirical, academically rigorous evaluation of all three models on held-out test data.
+### CP-07: Model Evaluation Laboratory
+- **Status:** **PLANNED**
+- **Objective:** Conduct rigorous empirical evaluation and comparative benchmarking across all three trained models.
 - **Key Deliverables:**
-  - `src/evaluation/metrics.py`: Calculation of Accuracy, Precision (weighted/macro), Recall (weighted/macro), F1-Score, and ROC-AUC.
-  - `src/evaluation/visualizations.py`: Generation of Confusion Matrices, ROC curves, and Precision-Recall curves.
-  - `src/evaluation/benchmarks.py`: Latency profiling (wall-clock inference time per 1,000 packets) and memory utilization profiling.
-  - Comprehensive benchmarking report comparing SVM vs. MLP vs. Decision Tree.
+  - Calculation of classification metrics: Accuracy, Precision (weighted/macro), Recall (weighted/macro), F1-Score, and ROC-AUC (OvR).
+  - Visualization artifacts: Confusion matrices, ROC curves, Precision-Recall curves.
+  - Operational benchmark suite: Wall-clock inference latency (ms per 1,000 flows) and memory footprint.
 - **Acceptance Criteria:**
-  - Zero fabricated or mock statistics; all metrics calculated directly from model evaluation runs on test splits.
-  - Multi-class confusion matrices generated and saved.
-  - Clear trade-off analysis documented (accuracy vs. training time vs. line-rate inference latency).
+  - 100% authentic metrics derived directly from held-out test data. Zero fabricated statistics.
+  - Comparative benchmark table highlighting accuracy vs. throughput trade-offs.
 
 ---
 
-### CP-05: Streamlit Interactive Dashboard & Live Inspection
-- **Status:** **PLANNED** (Blocked on CP-04 completion)
-- **Primary Objective:** Upgrade `app.py` into a dynamic, production-grade cybersecurity dashboard.
+### CP-08: Intrusion Detection Engine
+- **Status:** **PLANNED**
+- **Objective:** Deliver the operational intrusion detection inference engine capable of classifying single flows and micro-batches.
 - **Key Deliverables:**
-  - Interactive multi-page / tab navigation:
-    1. Threat Intelligence & Executive Summary.
-    2. Dataset Explorer & Distribution Analytics.
-    3. Model Architectures & Hyperparameter Controls.
-    4. Comparative Performance Leaderboard & Interactive Confusion Matrix.
-    5. Real-Time Packet Classification Simulator (upload CSV / manual flow parameter input).
-  - Visual charts rendered with Matplotlib / Seaborn / native Streamlit charts.
+  - Low-latency inference pipeline applying saved preprocessing transforms and model estimators.
+  - Configurable decision thresholds and severity-ranked alert generation.
+  - Real-time classification engine with sub-50ms single-flow turnaround.
 - **Acceptance Criteria:**
-  - Dashboard runs seamlessly without exceptions via `streamlit run app.py`.
-  - Live packet inspection executes real inference through serialized models from `models/saved/`.
-  - Fast response time (< 500ms UI interaction latency).
+  - Accurately classifies incoming flow vectors into Benign or specific attack signatures.
+  - Gracefully handles malformed or out-of-range flow vectors.
 
 ---
 
-### CP-06: Verification, Final Academic Audit & Delivery
-- **Status:** **PLANNED** (Blocked on CP-05 completion)
-- **Primary Objective:** Execute full end-to-end regression testing, code cleanup, documentation audit, and final project packaging.
+### CP-09: Threat Intelligence & Prediction Explorer
+- **Status:** **PLANNED**
+- **Objective:** Provide deep diagnostic interpretability and threat intelligence analytics for classified network flows.
 - **Key Deliverables:**
-  - Complete automated test suite running with high coverage (`pytest --cov=src`).
-  - PEP 8 compliance and code formatting audit.
-  - Final Academic Project Report detailing methodology, experimental results, and defense preparations.
-  - Verified repository ready for archival and academic evaluation.
+  - Deep-dive prediction viewer detailing feature contributions and confidence distributions.
+  - Attack taxonomy explorer mapping detected attacks to MITRE ATT&CK or CIC threat families.
+  - Feature importance analysis highlighting primary flow discriminators (e.g., packet length variance, flag counts).
 - **Acceptance Criteria:**
-  - All automated tests pass 100%.
-  - Zero unused dependencies or dead code.
-  - Academic report matches all experimental findings exactly.
+  - Enables security analysts to inspect why a specific flow was flagged as malicious.
+  - Visualizes model confidence and probability calibration.
 
 ---
 
-## Strict Implementation Guardrails
+### CP-10: Reports & Exports
+- **Status:** **PLANNED**
+- **Objective:** Build automated report generation and audit trail export capabilities.
+- **Key Deliverables:**
+  - Diagnostic executive report generator (PDF / HTML / Markdown).
+  - Forensic CSV/JSON export for classified intrusion events.
+  - Model card and benchmark data export for academic auditing.
+- **Acceptance Criteria:**
+  - Reports export cleanly with timestamped telemetry, evaluation figures, and audit metadata.
 
-- **Zero Data Leakage:** Preprocessing transformations fit strictly on training partitions.
-- **Algorithmic Boundary:** Exactly SVM, MLP, and Decision Tree. No gradient boosting, random forests, or unauthorized models.
-- **Empirical Authenticity:** No mock predictions, placeholder results, or simulated metric outputs.
-- **Checkpoint Gates:** Work on subsequent checkpoints commences **only** after explicit human review and approval.
+---
+
+### CP-11: Integration, Testing & Optimization
+- **Status:** **PLANNED**
+- **Objective:** Perform comprehensive end-to-end integration testing, profiling, and performance optimization.
+- **Key Deliverables:**
+  - Automated integration test suite validating the complete pipeline from CSV ingestion to Streamlit inference.
+  - Memory and latency profiling report.
+  - Performance optimizations (vectorized feature transforms, caching of model objects via `@st.cache_resource`).
+- **Acceptance Criteria:**
+  - Comprehensive test suite passing with high test coverage.
+  - Zero memory leaks during repeated inference cycles.
+
+---
+
+### CP-12: Deployment & Release
+- **Status:** **PLANNED**
+- **Objective:** Finalize the project for academic presentation, peer review, and operational release.
+- **Key Deliverables:**
+  - Production deployment configuration (Docker / Streamlit Community Cloud readiness).
+  - Comprehensive user and developer manual.
+  - Academic defense presentation deck and demonstration script.
+  - Final tagged Git release.
+- **Acceptance Criteria:**
+  - System installs and runs on a clean environment with single command: `streamlit run app.py`.
+  - All academic project requirements, documentation, and defense deliverables complete.
+
+---
+
+## Strict Guardrails & Verification Gates
+
+- **Zero Fabricated Logic:** All statistics, metrics, and classifications must derive strictly from empirical data and trained model estimators.
+- **Algorithmic Constraint:** Only SVM, MLP, and Decision Tree are authorized.
+- **Data Leakage Safeguards:** Preprocessing statistics are strictly computed on training partitions.
+- **Checkpoint Progression Gate:** Advancing to any subsequent checkpoint requires explicit human sign-off.

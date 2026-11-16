@@ -1,17 +1,17 @@
 # ==============================================================================
 # AI-Powered Network Intrusion Detection System (NIDS) - Dependencies
-# Python Version: >= 3.10, < 3.13
+# Python Version: >= 3.10
 # ==============================================================================
 
 # Core Application & Interactive UI
 streamlit>=1.35.0
 
 # Scientific Computing & Data Processing
-numpy>=1.26.0,<2.0.0
-pandas>=2.1.0,<3.0.0
+numpy>=1.26.0
+pandas>=2.1.0
 
 # Machine Learning Algorithms (SVM, MLP, Decision Tree) & Metrics
-scikit-learn>=1.4.0,<1.6.0
+scikit-learn>=1.4.0
 
 # Model Persistence & Artifact Serialization
 joblib>=1.3.0

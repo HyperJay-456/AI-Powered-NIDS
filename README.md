@@ -194,12 +194,18 @@ pytest tests/ -v
 
 | Checkpoint | Scope | Status |
 | :--- | :--- | :--- |
-| **CP-01** | **Project Foundation & Modular Architecture** | **Completed** |
-| **CP-02** | Data Ingestion, Cleaning & Preprocessing (CIC-IDS-2017) | Scheduled |
-| **CP-03** | Model Engineering & Training (SVM, MLP, Decision Tree) | Scheduled |
-| **CP-04** | Rigorous Evaluation & Benchmarking | Scheduled |
-| **CP-05** | Streamlit Interactive Dashboard & Live Inspection | Scheduled |
-| **CP-06** | End-to-End Verification & Academic Documentation | Scheduled |
+| **CP-01** | **Project Foundation** | **Completed** |
+| **CP-02** | UI Design System | Scheduled |
+| **CP-03** | Application Dashboard | Scheduled |
+| **CP-04** | Traffic Upload & Data Explorer | Scheduled |
+| **CP-05** | Dataset Engineering | Scheduled |
+| **CP-06** | ML Training Pipeline | Scheduled |
+| **CP-07** | Model Evaluation Laboratory | Scheduled |
+| **CP-08** | Intrusion Detection Engine | Scheduled |
+| **CP-09** | Threat Intelligence & Prediction Explorer | Scheduled |
+| **CP-10** | Reports & Exports | Scheduled |
+| **CP-11** | Integration, Testing & Optimization | Scheduled |
+| **CP-12** | Deployment & Release | Scheduled |
 
 See [PROJECT_PLAN.md](file:///c:/Projects/ML%20Mini%20Project/PROJECT_PLAN.md) for detailed deliverables and verification gates.
 
