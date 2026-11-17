@@ -55,7 +55,9 @@ class PreprocessingAuditReport:
     output_feature_names: List[str]
     dual_representations_created: List[str]  # ["Scaled (SVM/MLP)", "Unscaled (Decision Tree)"]
     data_leakage_prevented: bool
+    training_only_preprocessing_enforced: bool
     leakage_safeguard_notes: List[str]
+    unverified_leakage_risks: List[str]
     artifact_directory: str
     warnings: List[str] = field(default_factory=list)
 
@@ -182,7 +184,16 @@ class EngineeringReportGenerator:
             "StandardScaler parameters (scale and variance) fitted exclusively on training partition records.",
             "OneHotEncoder category vocabularies fitted exclusively on training partition records.",
             "Group-isolated duplicate policy prevents identical feature records from spanning train/val/test partitions.",
-            "Identifiers and timestamps excluded from model feature matrix to prevent memorization leakage.",
+            "Network identifiers (Flow ID, Source IP, Destination IP, Timestamp) excluded from model features.",
+            "Port fields (Source Port, Destination Port) treated as configurable candidate features rather than unconditionally excluded.",
+            "High-cardinality categorical features bounded via max_categories to prevent uncontrolled one-hot expansion.",
+        ]
+
+        unverified_leakage_risks = [
+            "Temporal Lookahead: Flows are partitioned independently of arrival sequence; time-series temporal correlation across capture intervals is not verified in CP-05.",
+            "Near-Duplicate Flows: Exact-match hash grouping does not capture near-duplicate flows with jittered timestamps or slightly altered packet lengths.",
+            "Cross-Capture Host Subnets: Multi-file cross-capture host IP overlap across days remains unverified in single-file engineering.",
+            "Downstream Modeling Leakage: Model hyperparameter tuning and cross-validation leakage controls belong to CP-06/CP-07.",
         ]
 
         return PreprocessingAuditReport(
@@ -204,7 +215,9 @@ class EngineeringReportGenerator:
                 "Unscaled Representation (Imputed original magnitude, sparse CSR for Decision Tree)",
             ],
             data_leakage_prevented=True,
+            training_only_preprocessing_enforced=True,
             leakage_safeguard_notes=leakage_safeguards,
+            unverified_leakage_risks=unverified_leakage_risks,
             artifact_directory=artifact_dir,
             warnings=warnings_list,
         )

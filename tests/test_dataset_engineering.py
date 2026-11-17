@@ -657,3 +657,200 @@ def test_end_to_end_preprocessing_pipeline(temp_project_dir, sample_flow_datafra
     assert eng_status.state == "Completed"
     assert eng_status.run_count == 1
     assert eng_status.train_rows == run_record.train_rows
+
+
+# ==============================================================================
+# 11. FEATURE POLICY AUDIT & CARDINALITY SAFETY TESTS (CP-05 AUDIT)
+# ==============================================================================
+
+
+def test_source_port_default_classification():
+    """Verify Source Port is classified as a candidate PORT feature, NOT an unconditionally excluded identifier."""
+    decisions = FeaturePolicyManager.classify_columns(["Source Port", "src_port"])
+    for d in decisions:
+        assert d.role == ColumnRole.PORT
+        assert d.role != ColumnRole.IDENTIFIER
+        assert d.role != ColumnRole.IDENTIFIER_EXCLUDED
+        assert d.is_user_configurable is True
+        # By default, source port is not included to reduce ephemeral noise, but is a configurable candidate
+        assert d.include_in_model is False
+        assert "configurable candidate feature" in d.reason.lower() or "source port" in d.reason.lower()
+
+
+def test_destination_port_default_classification():
+    """Verify Destination Port is classified as candidate PORT feature and included by default."""
+    decisions = FeaturePolicyManager.classify_columns(["Destination Port", "dst_port"])
+    for d in decisions:
+        assert d.role == ColumnRole.PORT
+        assert d.role != ColumnRole.IDENTIFIER
+        assert d.include_in_model is True
+        assert d.is_user_configurable is True
+
+
+def test_protocol_categorical_treatment():
+    """Verify Protocol is treated as a categorical feature with one-hot encoding."""
+    decisions = FeaturePolicyManager.classify_columns(["Protocol"])
+    d = decisions[0]
+    assert d.role == ColumnRole.CATEGORICAL_FEATURE
+    assert d.include_in_model is True
+
+    manifest = FeaturePolicyManager.create_manifest(["Protocol", "Flow Duration", "Label"])
+    assert "Protocol" in manifest.categorical_feature_columns
+    assert "Protocol" not in manifest.numeric_feature_columns
+
+    # Test that categorical encoder transforms Protocol values properly
+    df = pd.DataFrame({"Protocol": ["TCP", "UDP", "ICMP", "TCP"]})
+    encoder = LeakageFreeCategoricalEncoder()
+    encoder.fit(df, categorical_columns=["Protocol"])
+    sparse_out = encoder.transform(df)
+    assert sparse_out.shape == (4, 3)
+    assert len(encoder.metadata_.feature_names_out) == 3
+
+
+def test_user_controlled_port_inclusion_exclusion():
+    """Verify explicit user configuration can include or exclude port candidate features."""
+    cols = ["Flow ID", "Source Port", "Destination Port", "Protocol", "Flow Duration", "Label"]
+
+    # 1. Include Source Port = True
+    manifest_src_inc = FeaturePolicyManager.create_manifest(
+        cols, include_destination_port=True, include_source_port=True
+    )
+    assert "Source Port" in manifest_src_inc.model_feature_columns
+    assert "Source Port" in manifest_src_inc.numeric_feature_columns
+    assert "Source Port" not in manifest_src_inc.excluded_identifier_columns
+
+    # 2. Exclude Destination Port = True
+    manifest_dst_exc = FeaturePolicyManager.create_manifest(
+        cols, include_destination_port=False, include_source_port=False
+    )
+    assert "Destination Port" not in manifest_dst_exc.model_feature_columns
+    assert "Destination Port" in manifest_dst_exc.excluded_identifier_columns
+
+    # 3. Explicit User Overrides dictionary
+    manifest_overrides = FeaturePolicyManager.create_manifest(
+        cols, user_overrides={"Source Port": True, "Destination Port": False}
+    )
+    assert "Source Port" in manifest_overrides.model_feature_columns
+    assert "Destination Port" not in manifest_overrides.model_feature_columns
+    assert "Destination Port" in manifest_overrides.excluded_identifier_columns
+
+
+def test_stable_feature_ordering_after_policy_changes():
+    """Verify that enabling/disabling ports maintains the exact relative order of source columns."""
+    cols = [
+        "Flow ID",
+        "Source IP",
+        "Source Port",
+        "Destination IP",
+        "Destination Port",
+        "Protocol",
+        "Flow Duration",
+        "Total Fwd Packets",
+        "Label",
+    ]
+
+    manifest_default = FeaturePolicyManager.create_manifest(cols, include_source_port=False, include_destination_port=True)
+    # Default model features: Destination Port, Protocol, Flow Duration, Total Fwd Packets
+    assert manifest_default.model_feature_columns == [
+        "Destination Port",
+        "Protocol",
+        "Flow Duration",
+        "Total Fwd Packets",
+    ]
+
+    manifest_with_src = FeaturePolicyManager.create_manifest(cols, include_source_port=True, include_destination_port=True)
+    # Source Port is inserted in its original source order position relative to others
+    assert manifest_with_src.model_feature_columns == [
+        "Source Port",
+        "Destination Port",
+        "Protocol",
+        "Flow Duration",
+        "Total Fwd Packets",
+    ]
+
+    # Verify original non-port features maintain identical relative sequence
+    non_port_default = [c for c in manifest_default.model_feature_columns if "port" not in c.lower()]
+    non_port_with_src = [c for c in manifest_with_src.model_feature_columns if "port" not in c.lower()]
+    assert non_port_default == non_port_with_src == ["Protocol", "Flow Duration", "Total Fwd Packets"]
+
+
+def test_high_cardinality_categorical_handling():
+    """Verify high-cardinality categorical features are safely bounded to prevent one-hot explosion."""
+    # 100 unique categories across 200 rows
+    categories = [f"cat_{i:03d}" for i in range(100)]
+    df = pd.DataFrame({"high_card_col": categories * 2})
+
+    # Capped at max_categories=15
+    capped_encoder = LeakageFreeCategoricalEncoder(categorical_columns=["high_card_col"], max_categories=15)
+    capped_encoder.fit(df)
+    transformed = capped_encoder.transform(df)
+
+    assert transformed.shape == (200, 15)
+    assert len(capped_encoder.metadata_.feature_names_out) == 15
+    assert capped_encoder.metadata_.max_categories_per_feature == 15
+
+
+def test_persistence_of_feature_policy_decisions_in_manifest(temp_project_dir, sample_flow_dataframe):
+    """Verify that all feature-policy decisions are recorded in the engineering manifest metadata.json."""
+    raw_dir = temp_project_dir["raw"]
+    meta_dir = temp_project_dir.get("meta") or temp_project_dir.get("metadata")
+    processed_dir = temp_project_dir["processed"]
+
+    csv_name = "test_persistence.csv"
+    csv_path = raw_dir / csv_name
+    sample_flow_dataframe.to_csv(csv_path, index=False)
+
+    import hashlib
+    sha = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+
+    manifest_file = meta_dir / "ingestion_manifest.json"
+    manifest_data = {
+        csv_name: {
+            "filename": csv_name,
+            "file_size_bytes": csv_path.stat().st_size,
+            "sha256_checksum": sha,
+            "total_rows": len(sample_flow_dataframe),
+            "column_count": len(sample_flow_dataframe.columns),
+            "validation_status": "Validated",
+            "is_valid": True,
+            "has_ground_truth_label": True,
+            "label_column_name": "Label",
+        }
+    }
+    with open(manifest_file, "w", encoding="utf-8") as f:
+        json.dump(manifest_data, f)
+
+    pipeline = PreprocessingPipeline(
+        raw_dir=raw_dir,
+        processed_dir=processed_dir,
+        metadata_dir=meta_dir,
+    )
+    report = pipeline.execute_pipeline(selected_dataset_ids=[csv_name])
+
+    # Inspect persisted metadata.json
+    metadata_json_path = processed_dir / report.run_id / "metadata" / "metadata.json"
+    assert metadata_json_path.exists()
+
+    with open(metadata_json_path, "r", encoding="utf-8") as f:
+        meta_json = json.load(f)
+
+    assert "feature_policy_decisions" in meta_json
+    assert len(meta_json["feature_policy_decisions"]) == len(sample_flow_dataframe.columns)
+
+    # Check that individual decisions record original name, role, and inclusion status
+    dec_map = {d["original_name"]: d for d in meta_json["feature_policy_decisions"]}
+    assert "Flow ID" in dec_map
+    assert dec_map["Flow ID"]["role"] == ColumnRole.IDENTIFIER_EXCLUDED.value
+    assert dec_map["Flow ID"]["include_in_model"] is False
+
+    assert "Source Port" in dec_map
+    assert dec_map["Source Port"]["role"] == ColumnRole.PORT_FIELD.value
+
+    assert "Destination Port" in dec_map
+    assert dec_map["Destination Port"]["role"] == ColumnRole.PORT_FIELD.value
+    assert dec_map["Destination Port"]["include_in_model"] is True
+
+    assert "Protocol" in dec_map
+    assert dec_map["Protocol"]["role"] == ColumnRole.CATEGORICAL_FEATURE.value
+    assert dec_map["Protocol"]["include_in_model"] is True
+

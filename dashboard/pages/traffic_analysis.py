@@ -789,7 +789,7 @@ def _render_data_quality_telemetry_stage(selected_filenames: List[str]) -> None:
             st.plotly_chart(fig, use_container_width=True)
 
     info_panel(
-        title="Zero-Leakage Target Label Invariant",
+        title="Target Label Separation Invariant",
         message=(
             "Target labels ('Label') will NEVER be imputed. Any sample with a missing, corrupted, or non-finite "
             "ground-truth label is strictly excluded from supervised partitions to prevent synthetic label bias. "
@@ -818,25 +818,29 @@ def _render_feature_policy_stage(selected_filenames: List[str]) -> None:
 
     numeric_count = sum(1 for d in decisions if d.role == ColumnRole.NUMERIC_FEATURE)
     cat_count = sum(1 for d in decisions if d.role == ColumnRole.CATEGORICAL_FEATURE)
-    ident_count = sum(1 for d in decisions if d.role in (ColumnRole.IDENTIFIER, ColumnRole.PORT, ColumnRole.TIMESTAMP))
-    label_count = sum(1 for d in decisions if d.role == ColumnRole.LABEL)
+    port_count = sum(1 for d in decisions if d.role == ColumnRole.PORT_FIELD)
+    ident_count = sum(1 for d in decisions if d.role in (ColumnRole.IDENTIFIER_EXCLUDED, ColumnRole.TIMESTAMP_EXCLUDED))
+    label_count = sum(1 for d in decisions if d.role == ColumnRole.GROUND_TRUTH_LABEL)
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         metric_card(label="Numeric Features", value=str(numeric_count), subtitle="Standard / Unscaled Dual Scaling")
     with c2:
         metric_card(label="Categorical Features", value=str(cat_count), subtitle="Leakage-Free OneHotEncoder")
     with c3:
-        metric_card(label="Quarantined Identifiers", value=str(ident_count), subtitle="Isolated into Provenance Sidecar", status_color="var(--color-status-warning)")
+        metric_card(label="Candidate Port Fields", value=str(port_count), subtitle="Configurable Candidate Features", status_color="var(--color-accent-primary)")
     with c4:
+        metric_card(label="Quarantined Identifiers", value=str(ident_count), subtitle="Isolated into Provenance Sidecar", status_color="var(--color-status-warning)")
+    with c5:
         metric_card(label="Target Label Column", value=str(label_count), subtitle="Ground-Truth LabelEncoder", status_color="var(--color-status-success)")
 
     info_panel(
-        title="Network Identifier Exclusion Enforcement",
+        title="Network Feature Policy & Identifier Isolation",
         message=(
-            "To prevent machine learning models from memorizing specific host IP addresses, ephemeral port numbers, "
-            "or temporal flow timestamps, all identifier columns ('Flow ID', 'Source IP', 'Destination IP', 'Timestamp', 'External IP') "
-            "are strictly stripped from the model training matrix and preserved in a sidecar CSV for post-inference forensic auditing."
+            "To prevent machine learning models from memorizing specific host IP addresses or temporal flow timestamps, "
+            "network identifiers ('Flow ID', 'Source IP', 'Destination IP', 'Timestamp', 'External IP') are excluded from model features "
+            "by default and preserved in a provenance sidecar for forensic audits. Port fields ('Destination Port', 'Source Port') "
+            "are treated as configurable candidate features with explicit inclusion/exclusion controls in Stage 4 below."
         ),
         icon="🔒",
     )
@@ -917,6 +921,22 @@ def _render_configuration_stage(selected_filenames: List[str]) -> PreprocessingR
             unsafe_allow_html=True,
         )
 
+    col9, col10 = st.columns(2)
+    with col9:
+        inc_dst_port = st.checkbox(
+            "Include Destination Port (Service port candidate)",
+            value=True,
+            help="Retains Destination Port as a discrete candidate feature (e.g. 80, 443, 22, 53).",
+            key="cfg_inc_dst_port",
+        )
+    with col10:
+        inc_src_port = st.checkbox(
+            "Include Source Port (Client port candidate)",
+            value=False,
+            help="Retains Source Port as a candidate feature (disabled by default to reduce ephemeral client port noise).",
+            key="cfg_inc_src_port",
+        )
+
     return PreprocessingRunConfiguration(
         source_filenames=selected_filenames,
         train_ratio=train_ratio,
@@ -924,6 +944,8 @@ def _render_configuration_stage(selected_filenames: List[str]) -> PreprocessingR
         test_ratio=test_ratio,
         random_seed=int(random_seed),
         duplicate_policy=DuplicateHandlingPolicy(dup_policy_choice),
+        include_destination_port=inc_dst_port,
+        include_source_port=inc_src_port,
         numeric_imputer_strategy=num_imputer,
         categorical_imputer_strategy=cat_imputer,
         enable_dual_scaling=True,
@@ -981,7 +1003,7 @@ def _render_engineering_results_stage(
     """Stage 6: Engineering Results & Strict Row Accounting."""
     section_header(
         title="Stage 6: Engineering Results & Row Accounting",
-        description=f"Audited metrics and zero-leakage accounting for active run: {active_run.run_id}",
+        description=f"Audited metrics and verified row accounting for active run: {active_run.run_id}",
     )
 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
@@ -1009,7 +1031,7 @@ def _render_engineering_results_stage(
     ))
     all_eq_hold = eq1_hold and eq2_hold
 
-    accounting_badge = badge_html("Zero-Leakage Accounting Verified ✓", variant="success") if all_eq_hold else badge_html("Accounting Discrepancy", variant="error")
+    accounting_badge = badge_html("Row-Accounting Verified ✓", variant="success") if all_eq_hold else badge_html("Accounting Discrepancy", variant="error")
 
     st.markdown(
         f"""
@@ -1032,6 +1054,34 @@ def _render_engineering_results_stage(
         """,
         unsafe_allow_html=True,
     )
+
+    with st.expander("🛡️ Data Leakage Controls & Boundary Assessment (Tested vs. Unverified)"):
+        st.markdown(
+            """
+            <div style="font-size: 0.8125rem; line-height: 1.7; color: var(--color-text-secondary);">
+                <div style="font-weight: 600; color: var(--color-status-success); margin-bottom: 0.25rem;">
+                    ✓ Tested &amp; Verified Leakage Controls (CP-05 Scope):
+                </div>
+                <ul style="margin-top: 0; padding-left: 1.25rem;">
+                    <li><strong>Training-Only Preprocessing Fitting:</strong> All imputation medians, OneHotEncoder vocabularies, and StandardScaler parameters are learned exclusively from the training split (70%) after partitioning.</li>
+                    <li><strong>Group-Isolated Duplicates:</strong> Exact duplicate flow samples are assigned unified group hashes and retained within the same partition, preventing identical sample leakage between train and val/test.</li>
+                    <li><strong>Direct Identifier Exclusion:</strong> Flow ID, Source IP, Destination IP, and Timestamps are excluded from model features and preserved in a separate provenance sidecar.</li>
+                    <li><strong>Candidate Port Flexibility:</strong> Source Port and Destination Port are treated as configurable candidate features with explicit user-controlled inclusion.</li>
+                    <li><strong>High-Cardinality Capping:</strong> Categorical features are bounded with <code>max_categories</code> to prevent uncontrolled one-hot expansion.</li>
+                </ul>
+                <div style="font-weight: 600; color: var(--color-status-warning); margin-top: 0.75rem; margin-bottom: 0.25rem;">
+                    ⚠️ Known Leakage Risks Outside CP-05 Verification Scope:
+                </div>
+                <ul style="margin-top: 0; padding-left: 1.25rem;">
+                    <li><strong>Temporal Auto-Correlation:</strong> Flows are partitioned independently of arrival timestamp; temporal lookahead across multi-hour traffic bursts is not eliminated.</li>
+                    <li><strong>Near-Duplicate Flows:</strong> Exact SHA-256 grouping isolates identical rows, but near-duplicate flows with jittered timestamps or slightly altered packet counts are not linked.</li>
+                    <li><strong>Cross-Capture Host Subnets:</strong> Multi-day host IP or subnet overlap across separate raw CSV files is not audited across days.</li>
+                    <li><strong>Downstream Modeling Leakage:</strong> Model hyperparameter selection and cross-validation leakage controls are deferred to CP-06 and CP-07.</li>
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     dist_file = artifact_mgr.processed_dir / active_run.run_id / "metadata" / "class_distribution.json"
     if dist_file.exists():

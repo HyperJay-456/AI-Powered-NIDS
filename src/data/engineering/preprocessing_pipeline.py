@@ -4,7 +4,7 @@ Coordinates the end-to-end transformation of validated network flow CSV datasets
 into reproducible, model-ready train, validation, and test partitions:
   - Enforces raw dataset immutability (read-only access to data/raw/)
   - Enforces strict row accounting (zero silent row loss)
-  - Enforces zero data leakage (splitting occurs before fitting any preprocessor)
+  - Enforces training-only preprocessing fitting and group-isolated partitioning to prevent data leakage
   - Generates dual representations: Scaled (SVM/MLP) and Unscaled (Decision Tree)
   - Persists atomic, versioned artifacts to data/processed/<engineering_run_id>/
 """
@@ -71,6 +71,8 @@ class PreprocessingRunConfiguration:
     splitting_strategy: SplittingStrategy = SplittingStrategy.STRATIFIED
     include_destination_port: bool = True
     include_source_port: bool = False
+    user_feature_overrides: Optional[Dict[str, bool]] = None
+    max_categories_per_feature: Optional[int] = 50
     numeric_imputation_strategy: str = "median"
     categorical_imputation_strategy: str = "most_frequent"
     numeric_imputer_strategy: Optional[str] = None
@@ -275,6 +277,7 @@ class PreprocessingPipeline:
         policy_mgr = FeaturePolicyManager(
             include_destination_port=cfg.include_destination_port,
             include_source_port=cfg.include_source_port,
+            user_overrides=cfg.user_feature_overrides,
         )
         schema_manifest = policy_mgr.evaluate_schema(
             columns=list(supervised_df.columns),
@@ -377,8 +380,8 @@ class PreprocessingPipeline:
         X_val_imp = imputer.transform(X_val_df)
         X_test_imp = imputer.transform(X_test_df)
 
-        # 2. Categorical OneHotEncoder (learned on train only)
-        cat_encoder = LeakageFreeCategoricalEncoder()
+        # 2. Categorical OneHotEncoder (learned on train only with safe cardinality cap)
+        cat_encoder = LeakageFreeCategoricalEncoder(max_categories=cfg.max_categories_per_feature)
         cat_encoder.fit(X_train_imp, categorical_columns=cat_cols)
 
         cat_sparse_train = cat_encoder.transform(X_train_imp)
@@ -468,7 +471,9 @@ class PreprocessingPipeline:
                 "excluded_identifiers": schema_manifest.excluded_identifier_columns,
                 "output_features": output_feature_names,
                 "total_output_features": len(output_feature_names),
+                "decisions": [d.to_dict() for d in schema_manifest.all_decisions],
             },
+            "feature_policy_decisions": [d.to_dict() for d in schema_manifest.all_decisions],
             "label_mapping": asdict(label_proc.mapping_) if label_proc.mapping_ else {},
             "preprocessing_config": {
                 "train_ratio": cfg.train_ratio,

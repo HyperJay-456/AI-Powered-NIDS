@@ -29,6 +29,7 @@ class CategoricalEncoderMetadata:
     total_encoded_features: int
     category_vocabularies: Dict[str, List[str]]
     feature_names_out: List[str]
+    max_categories_per_feature: Optional[int] = None
 
 
 class LeakageFreeCategoricalEncoder:
@@ -38,9 +39,11 @@ class LeakageFreeCategoricalEncoder:
         self,
         categorical_columns: Optional[List[str]] = None,
         handle_unknown: str = "ignore",
+        max_categories: Optional[int] = 50,
     ):
-        """Initialize encoder with optional columns and safe unknown handling."""
+        """Initialize encoder with optional columns, safe unknown handling, and cardinality capping."""
         self.handle_unknown = handle_unknown
+        self.max_categories = max_categories
         self.encoder: Optional[OneHotEncoder] = None
         self.categorical_columns: List[str] = list(categorical_columns) if categorical_columns else []
         self.is_fitted: bool = False
@@ -80,6 +83,7 @@ class LeakageFreeCategoricalEncoder:
 
         self.encoder = OneHotEncoder(
             handle_unknown=self.handle_unknown,
+            max_categories=self.max_categories,
             sparse_output=True,
             dtype=np.float32,
         )
@@ -98,6 +102,7 @@ class LeakageFreeCategoricalEncoder:
             total_encoded_features=len(feature_names),
             category_vocabularies=vocabularies,
             feature_names_out=feature_names,
+            max_categories_per_feature=self.max_categories,
         )
 
         logger.info(

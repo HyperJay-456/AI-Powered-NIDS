@@ -7,7 +7,7 @@ while preserving excluded columns in an audit provenance sidecar.
 
 from dataclasses import dataclass, field
 import enum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 
@@ -72,6 +72,19 @@ class FeaturePolicyDecision:
         """Justification for policy decision."""
         return self.exclusion_reason or self.notes or "Feature included in ML training matrix"
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert decision to JSON-serializable dictionary."""
+        return {
+            "original_name": self.original_name,
+            "normalized_name": self.normalized_name,
+            "role": self.role.value,
+            "include_in_model": self.include_in_model,
+            "exclusion_reason": self.exclusion_reason,
+            "is_user_configurable": self.is_user_configurable,
+            "inferred_dtype": self.inferred_dtype,
+            "notes": self.notes,
+        }
+
 
 @dataclass
 class SchemaPolicyManifest:
@@ -86,6 +99,20 @@ class SchemaPolicyManifest:
     total_input_columns: int = 0
     total_model_features: int = 0
     total_excluded_columns: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert manifest to JSON-serializable dictionary."""
+        return {
+            "all_decisions": [d.to_dict() for d in self.all_decisions],
+            "model_feature_columns": self.model_feature_columns,
+            "numeric_feature_columns": self.numeric_feature_columns,
+            "categorical_feature_columns": self.categorical_feature_columns,
+            "excluded_identifier_columns": self.excluded_identifier_columns,
+            "target_label_column": self.target_label_column,
+            "total_input_columns": self.total_input_columns,
+            "total_model_features": self.total_model_features,
+            "total_excluded_columns": self.total_excluded_columns,
+        }
 
 
 # Recognized identifier and leakage-prone column patterns
@@ -119,17 +146,36 @@ DEFAULT_PORTS = {
 
 
 class FeaturePolicyManager:
-    """Assesses columns, enforces leakage prevention, and manages feature definitions."""
+    """Assesses columns, enforces leakage prevention, and manages feature definitions.
 
-    def __init__(self, include_destination_port: bool = True, include_source_port: bool = False):
-        """Initialize policy manager with configurable port handling options.
+    Defaults:
+        - Flow ID: exclude from model features.
+        - Source IP: exclude by default, preserve in provenance.
+        - Destination IP: exclude by default, preserve in provenance.
+        - Raw Timestamp: exclude by default, preserve in provenance.
+        - Source Port: configurable candidate feature (default False to minimize ephemeral noise).
+        - Destination Port: configurable candidate feature (default True as service identifier).
+        - Protocol: categorical feature (TCP/UDP/ICMP).
+    """
+
+    def __init__(
+        self,
+        include_destination_port: bool = True,
+        include_source_port: bool = False,
+        user_overrides: Optional[Dict[str, bool]] = None,
+    ):
+        """Initialize policy manager with configurable port and feature handling options.
 
         Args:
-            include_destination_port: If True, Destination Port is retained as a discrete feature.
-            include_source_port: If True, Source Port is retained (default False to reduce ephemeral port noise).
+            include_destination_port: If True, Destination Port is retained as a candidate feature.
+            include_source_port: If True, Source Port is retained as a candidate feature.
+            user_overrides: Optional dictionary mapping column names to explicit inclusion booleans.
         """
         self.include_destination_port = include_destination_port
         self.include_source_port = include_source_port
+        self.user_overrides: Dict[str, bool] = {
+            normalize_column_name(k): v for k, v in (user_overrides or {}).items()
+        }
 
     @classmethod
     def create_manifest(
@@ -137,16 +183,34 @@ class FeaturePolicyManager:
         columns: List[str],
         dtypes: Optional[Dict[str, str]] = None,
         label_column: Optional[str] = None,
+        include_destination_port: bool = True,
+        include_source_port: bool = False,
+        user_overrides: Optional[Dict[str, bool]] = None,
     ) -> SchemaPolicyManifest:
-        """Create policy manifest from list of column names."""
-        mgr = cls()
+        """Create policy manifest from list of column names with configurable options."""
+        mgr = cls(
+            include_destination_port=include_destination_port,
+            include_source_port=include_source_port,
+            user_overrides=user_overrides,
+        )
         dtypes_dict = dtypes or {}
         return mgr.evaluate_schema(columns, dtypes_dict, label_column=label_column)
 
     @classmethod
-    def classify_columns(cls, columns: List[str]) -> List[FeaturePolicyDecision]:
+    def classify_columns(
+        cls,
+        columns: List[str],
+        include_destination_port: bool = True,
+        include_source_port: bool = False,
+        user_overrides: Optional[Dict[str, bool]] = None,
+    ) -> List[FeaturePolicyDecision]:
         """Classify list of columns and return decisions."""
-        manifest = cls.create_manifest(columns)
+        manifest = cls.create_manifest(
+            columns,
+            include_destination_port=include_destination_port,
+            include_source_port=include_source_port,
+            user_overrides=user_overrides,
+        )
         return manifest.all_decisions
 
     def evaluate_column(
@@ -180,17 +244,23 @@ class FeaturePolicyManager:
                 notes="Ground-truth classification target.",
             )
 
-        # 2. Network Identifiers (High memorization and leakage risk)
+        # 2. Network Identifiers (Memorization and host-tracking leakage risk)
         if norm in DEFAULT_IDENTIFIERS:
+            is_flow_id = "flow" in norm and "id" in norm
+            reason = (
+                "Flow ID unique transaction identifier: excluded from model features to prevent memorization."
+                if is_flow_id
+                else "Host IP address identifier: excluded by default to prevent host memorization; preserved in provenance sidecar."
+            )
             return FeaturePolicyDecision(
                 original_name=col_name,
                 normalized_name=norm,
                 role=ColumnRole.IDENTIFIER_EXCLUDED,
                 include_in_model=False,
-                exclusion_reason="Identifier leakage risk: causes memorization rather than generalized threat patterns.",
-                is_user_configurable=True,
+                exclusion_reason=reason,
+                is_user_configurable=not is_flow_id,
                 inferred_dtype=dtype_str,
-                notes="Preserved in provenance metadata sidecar.",
+                notes="Preserved in provenance metadata sidecar." if not is_flow_id else "Unique flow transaction key.",
             )
 
         # 3. Timestamps (Temporal leakage risk)
@@ -200,22 +270,30 @@ class FeaturePolicyManager:
                 normalized_name=norm,
                 role=ColumnRole.TIMESTAMP_EXCLUDED,
                 include_in_model=False,
-                exclusion_reason="Temporal leakage risk: models can overfit to specific capture time windows.",
+                exclusion_reason="Raw timestamp: excluded by default to prevent temporal lookahead/overfitting; preserved in provenance sidecar.",
                 is_user_configurable=True,
                 inferred_dtype=dtype_str,
                 notes="Preserved in provenance metadata sidecar.",
             )
 
-        # 4. Port Fields
+        # 4. Port Fields (Configurable candidate features)
         if norm in DEFAULT_PORTS:
-            if "destination" in norm or "dst" in norm:
+            is_dst = "destination" in norm or "dst" in norm
+            if norm in self.user_overrides:
+                include = self.user_overrides[norm]
+                reason = None if include else f"{'Destination' if is_dst else 'Source'} Port explicitly excluded by user configuration."
+            elif is_dst:
                 include = self.include_destination_port
-                reason = None if include else "Destination port excluded by user configuration."
-                notes = "Service identifier (HTTP 80, HTTPS 443, SSH 22, DNS 53, etc.)."
+                reason = None if include else "Destination Port excluded by user configuration."
             else:
                 include = self.include_source_port
-                reason = None if include else "Source port excluded to reduce ephemeral port noise."
-                notes = "Source client ephemeral port."
+                reason = None if include else "Source Port excluded by default policy (configurable candidate feature)."
+
+            notes = (
+                "Destination service port candidate (e.g. HTTP 80, HTTPS 443, SSH 22, DNS 53)."
+                if is_dst
+                else "Source client port candidate (configurable candidate feature)."
+            )
 
             return FeaturePolicyDecision(
                 original_name=col_name,
@@ -228,14 +306,15 @@ class FeaturePolicyManager:
                 notes=notes,
             )
 
-        # 5. Protocol Field
+        # 5. Protocol Field (Categorical feature)
         if norm in ("protocol", "protocol_type"):
+            include = self.user_overrides.get(norm, True)
             return FeaturePolicyDecision(
                 original_name=col_name,
                 normalized_name=norm,
                 role=ColumnRole.CATEGORICAL_FEATURE,
-                include_in_model=True,
-                exclusion_reason=None,
+                include_in_model=include,
+                exclusion_reason=None if include else "Protocol excluded by user override.",
                 is_user_configurable=True,
                 inferred_dtype=dtype_str,
                 notes="Transport layer protocol (TCP, UDP, ICMP). Categorical encoding required.",

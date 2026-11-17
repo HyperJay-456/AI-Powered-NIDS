@@ -167,6 +167,10 @@ class ArtifactManager:
                 with open(target_json, "w", encoding="utf-8") as f:
                     json.dump(content, f, indent=2, default=str)
 
+            # Master consolidated metadata.json
+            with open(meta_dir / "metadata.json", "w", encoding="utf-8") as f:
+                json.dump(metadata_dict, f, indent=2, default=str)
+
             # Save engineering manifest
             manifest_json = meta_dir / "engineering_manifest.json"
             with open(manifest_json, "w", encoding="utf-8") as f:
