@@ -181,7 +181,7 @@ def _render_ml_model_overview_section(model_status: ModelSystemStatus) -> None:
     """Render Section D: Machine Learning Model Overview (Strictly 3 authorized algorithms)."""
     section_header(
         title="Machine Learning Model Architectures",
-        description="Status of the three authorized machine learning models (strictly SVM, MLP, Decision Tree) planned for implementation in CP-06:",
+        description="Status of the three authorized machine learning models (strictly SVM, MLP, Decision Tree) implemented in CP-06:",
     )
 
     col1, col2, col3 = st.columns(3)

@@ -16,6 +16,7 @@ import shutil
 import tempfile
 from typing import Any, Dict, Generator, List, Tuple
 import unittest
+from unittest.mock import patch
 
 import joblib
 import numpy as np
@@ -593,3 +594,233 @@ def test_status_checker_cp06_model_discovery(temp_project_dir):
     assert status_all.models["svm"].is_trained is True
     assert status_all.models["mlp"].is_trained is True
     assert status_all.models["decision_tree"].is_trained is True
+
+
+# ==============================================================================
+# SECTION 8: CP-06 FOCUS AUDIT TESTS (AUDITS 1 TO 5)
+# ==============================================================================
+
+
+def test_audit1_test_fixtures_isolated_from_production_status(temp_project_dir):
+    """AUDIT 1: Verify test-fixture models cannot appear as genuine production-trained models."""
+    models_dir = temp_project_dir["models"]
+    registry = ModelRegistry(saved_models_dir=models_dir)
+
+    create_mock_cp05_run(temp_project_dir["processed"], run_id="run_audit1")
+    loader = CP05ArtifactLoader(processed_dir=temp_project_dir["processed"])
+    train_data = loader.load_training_partition_only("run_audit1", "svm")
+
+    trainer = SVMTrainer()
+    res = trainer.train(X_train=train_data.X, y_train=train_data.y, classes=train_data.classes)
+
+    session_id = "train_run_test_fixture_001"
+    manifest = AlgorithmTrainingManifest(
+        training_run_id=session_id,
+        algorithm="svm",
+        algorithm_display_name="Support Vector Machine",
+        estimator_class="sklearn.svm.LinearSVC",
+        status=res.status,
+        engineering_run_id="run_audit1",
+        source_dataset_names=train_data.source_filenames,
+        source_checksums=train_data.source_checksums,
+        training_partition_checksum=train_data.training_partition_checksum,
+        feature_schema_checksum=train_data.feature_schema_checksum,
+        label_mapping_checksum=train_data.label_mapping_checksum,
+        training_samples=train_data.num_samples,
+        feature_count=train_data.num_features,
+        class_count=train_data.num_classes,
+        classes=train_data.classes,
+        input_representation="Scaled Sparse CSR",
+        random_seed=42,
+        hyperparameters={},
+        training_duration_seconds=res.duration_seconds,
+        started_at_utc="2026-11-17T12:00:00Z",
+        completed_at_utc="2026-11-17T12:01:00Z",
+        convergence_status="Converged",
+        run_type="test_fixture",
+        is_test_fixture=True,
+    )
+
+    registry.save_training_session(
+        training_run_id=session_id,
+        engineering_run_id="run_audit1",
+        results_by_algo={"svm": res},
+        training_manifests={"svm": manifest},
+        started_at_utc="2026-11-17T12:00:00Z",
+        run_type="test_fixture",
+        is_test_fixture=True,
+    )
+
+    # 1. Model status must remain "No Trained Models" for production queries
+    status = check_model_status(models_dir=models_dir)
+    assert status.trained_count == 0
+    assert status.summary_text == "No Trained Models"
+    assert status.models["svm"].is_trained is False
+    assert status.models["svm"].status_label == "No Trained Models"
+
+    # 2. Registry queries must exclude test fixtures by default
+    runs = registry.list_training_runs(include_test_fixtures=False)
+    assert len(runs) == 0
+
+    models = registry.list_all_trained_models(include_test_fixtures=False)
+    assert len(models) == 0
+
+    latest = registry.get_latest_model("svm", include_test_fixtures=False)
+    assert latest is None
+
+    # 3. But when explicitly asked for testing/auditing, test fixtures can be found
+    test_runs = registry.list_training_runs(include_test_fixtures=True)
+    assert len(test_runs) == 1
+    assert test_runs[0]["is_test_fixture"] is True
+
+
+def test_audit2_mlp_convergence_semantics(temp_project_dir):
+    """AUDIT 2: Verify MLP distinguishes completed epochs, stopping criteria, and actual losses."""
+    create_mock_cp05_run(temp_project_dir["processed"], run_id="run_audit2")
+    loader = CP05ArtifactLoader(processed_dir=temp_project_dir["processed"])
+    train_data = loader.load_training_partition_only("run_audit2", "mlp")
+
+    # Case A: Strict tol requiring 10 epochs where tol is not met -> Max Epochs Reached
+    cfg_unconverged = MLPTrainingConfig(
+        hidden_layer_sizes=(16, 8),
+        max_epochs=3,
+        batch_size=32,
+        tol=1e-12,  # Impossibly small tolerance
+        n_iter_no_change=5,
+        random_state=42,
+    )
+    trainer_a = MLPTrainer(config=cfg_unconverged)
+    res_a = trainer_a.train(train_data.X, train_data.y, train_data.classes)
+
+    assert res_a.status == "Completed"
+    assert res_a.total_epochs_trained == 3
+    assert res_a.convergence_status == "Max Epochs Reached without Convergence"
+    assert len(res_a.loss_history) == 3
+    assert all(np.isfinite(l) and l > 0 for l in res_a.loss_history)
+
+    # Case B: Loose tol with n_iter_no_change=1 -> Stops early with Converged (Loss Tolerance Met)
+    cfg_converged = MLPTrainingConfig(
+        hidden_layer_sizes=(16, 8),
+        max_epochs=20,
+        batch_size=32,
+        tol=100.0,  # Very high tolerance to trigger immediate convergence
+        n_iter_no_change=1,
+        random_state=42,
+    )
+    trainer_b = MLPTrainer(config=cfg_converged)
+    res_b = trainer_b.train(train_data.X, train_data.y, train_data.classes)
+
+    assert res_b.status == "Completed"
+    assert res_b.total_epochs_trained < 20  # Stopped early!
+    assert res_b.convergence_status == "Converged (Loss Tolerance Met)"
+
+
+def test_audit3_corrupted_artifact_exclusion_and_sha256(temp_project_dir):
+    """AUDIT 3: Verify corrupted artifacts are excluded and rejected by SHA-256 validation."""
+    models_dir = temp_project_dir["models"]
+    create_mock_cp05_run(temp_project_dir["processed"], run_id="run_audit3")
+    orchestrator = TrainingOrchestrator(
+        processed_dir=temp_project_dir["processed"],
+        saved_models_dir=models_dir,
+    )
+
+    # Train a valid SVM
+    manifest = orchestrator.train_single_model("run_audit3", "svm")
+    run_id = manifest.training_run_id
+
+    registry = ModelRegistry(saved_models_dir=models_dir)
+    assert registry.verify_model_integrity(run_id, "svm") is True
+
+    # Tamper with the serialized model file
+    model_path = models_dir / run_id / "svm" / "model.joblib"
+    with open(model_path, "ab") as f:
+        f.write(b"CORRUPTED_TAMPERED_BYTES")
+
+    # Verification must now fail
+    assert registry.verify_model_integrity(run_id, "svm") is False
+
+    # Corrupted model must be excluded from available models list
+    available_models = registry.list_all_trained_models(verify_sha256=True)
+    assert len(available_models) == 0
+
+    # Status checker must not mark corrupted model as Trained & Ready
+    status = check_model_status(models_dir=models_dir)
+    assert status.models["svm"].is_trained is False
+    assert status.trained_count == 0
+    assert status.summary_text == "No Trained Models"
+
+
+def test_audit4_resource_preflight_rejection(temp_project_dir):
+    """AUDIT 4: Verify preflight check rejects unsafe configurations without subsampling."""
+    create_mock_cp05_run(temp_project_dir["processed"], run_id="run_audit4", n_samples=500, n_features=30)
+    loader = CP05ArtifactLoader(processed_dir=temp_project_dir["processed"])
+    train_data = loader.load_training_partition_only("run_audit4", "svm")
+
+    # Simulate an environment where estimated requirement exceeds available RAM
+    mock_available_bytes = 10 * 1024 * 1024  # Only 10 MB available
+    with patch.object(ResourceManager, "get_available_system_memory", return_value=mock_available_bytes):
+        preflight = ResourceManager.preflight_check(
+            algorithm="svm",
+            X=train_data.X,
+            y=train_data.y,
+            config=SVMTrainingConfig(),
+        )
+        assert preflight.is_safe is False
+        assert preflight.rejection_reason is not None
+        assert "Insufficient System Memory" in preflight.rejection_reason
+
+        # Orchestrator must raise MemoryError and refuse to train
+        orchestrator = TrainingOrchestrator(
+            processed_dir=temp_project_dir["processed"],
+            saved_models_dir=temp_project_dir["models"],
+        )
+        with pytest.raises(MemoryError) as excinfo:
+            orchestrator.train_single_model("run_audit4", "svm")
+        assert "Insufficient System Memory" in str(excinfo.value)
+
+
+def test_audit5_strict_training_partition_file_isolation(temp_project_dir):
+    """AUDIT 5: Verify CP-06 strictly opens ONLY training partition files, never validation or test."""
+    run_dir = create_mock_cp05_run(temp_project_dir["processed"], run_id="run_audit5")
+    orchestrator = TrainingOrchestrator(
+        processed_dir=temp_project_dir["processed"],
+        saved_models_dir=temp_project_dir["models"],
+    )
+
+    accessed_paths: List[str] = []
+    original_load_npz = sparse.load_npz
+    original_npy_load = np.load
+
+    def tracked_load_npz(file, *args, **kwargs):
+        path_str = str(file).replace("\\", "/")
+        accessed_paths.append(path_str)
+        return original_load_npz(file, *args, **kwargs)
+
+    def tracked_npy_load(file, *args, **kwargs):
+        path_str = str(file).replace("\\", "/")
+        accessed_paths.append(path_str)
+        return original_npy_load(file, *args, **kwargs)
+
+    with patch("scipy.sparse.load_npz", side_effect=tracked_load_npz):
+        with patch("numpy.load", side_effect=tracked_npy_load):
+            orchestrator.train_all_models_sequentially(
+                engineering_run_id="run_audit5",
+                master_config=MasterTrainingConfiguration(
+                    mlp_config=MLPTrainingConfig(max_epochs=2, batch_size=32),
+                ),
+            )
+
+    # 1. Verify every dataset file loaded belongs to the 'train' partition
+    dataset_accesses = [p for p in accessed_paths if "datasets" in p]
+    assert len(dataset_accesses) > 0
+
+    for path in dataset_accesses:
+        assert "/datasets/train/" in path, f"Violation: Accessed non-training dataset file: {path}"
+        assert "/datasets/val/" not in path, f"Violation: Touched validation dataset: {path}"
+        assert "/datasets/test/" not in path, f"Violation: Touched test dataset: {path}"
+
+    # 2. Verify representation types
+    assert any("X_scaled.npz" in p for p in dataset_accesses)
+    assert any("X_unscaled.npz" in p for p in dataset_accesses)
+    assert any("y.npy" in p for p in dataset_accesses)
+

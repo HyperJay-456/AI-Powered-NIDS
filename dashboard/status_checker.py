@@ -5,6 +5,7 @@ to provide verifiable operational telemetry without fabricated or synthetic data
 """
 
 from dataclasses import dataclass, field
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -265,11 +266,34 @@ def check_model_status(models_dir: Optional[Path] = None) -> ModelSystemStatus:
                     )
                     for rdir in run_dirs:
                         candidate = rdir / key / "model.joblib"
-                        if candidate.exists() and candidate.is_file() and candidate.stat().st_size > 0:
-                            is_trained = True
-                            found_path = f"{rdir.name}/{key}/model.joblib"
-                            trained_count += 1
-                            break
+                        meta_file = rdir / key / "metadata.json"
+                        if candidate.exists() and candidate.is_file() and candidate.stat().st_size > 0 and meta_file.exists():
+                            try:
+                                with open(meta_file, "r", encoding="utf-8") as mf:
+                                    meta_data = json.load(mf)
+
+                                # Strict production verification: never treat automated test fixtures as production models
+                                if meta_data.get("is_test_fixture", False):
+                                    continue
+                                if meta_data.get("run_type", "production") in ("test", "fixture", "test_fixture"):
+                                    continue
+                                if meta_data.get("status") not in ("Completed", "Completed with Warnings"):
+                                    continue
+
+                                # Verify cryptographic SHA-256 integrity before accepting as trained
+                                expected_sha = meta_data.get("artifact_checksum")
+                                if expected_sha:
+                                    with open(candidate, "rb") as cf:
+                                        computed_sha = hashlib.sha256(cf.read()).hexdigest()
+                                    if computed_sha != expected_sha:
+                                        continue
+
+                                is_trained = True
+                                found_path = f"{rdir.name}/{key}/model.joblib"
+                                trained_count += 1
+                                break
+                            except Exception:
+                                continue
                 except Exception:
                     pass
 

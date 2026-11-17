@@ -54,6 +54,8 @@ class AlgorithmTrainingManifest:
     model_size_bytes: int = 0
     preprocessing_artifact_references: List[str] = field(default_factory=list)
     environment: Dict[str, str] = field(default_factory=dict)
+    run_type: str = "production"  # "production" or "test_fixture"
+    is_test_fixture: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert manifest to JSON-serializable dictionary."""
@@ -77,6 +79,8 @@ class MasterTrainingRunManifest:
     trained_algorithms: List[str]
     model_manifests: Dict[str, AlgorithmTrainingManifest]
     notes: List[str] = field(default_factory=list)
+    run_type: str = "production"  # "production" or "test_fixture"
+    is_test_fixture: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dictionary."""

@@ -117,9 +117,13 @@ class MLPTrainer:
             total_batches_per_epoch = int(np.ceil(n_samples / float(cfg.batch_size)))
             total_batches = 0
             is_first_call = True
+            consecutive_no_change = 0
+            stopping_criterion_met = False
+            total_epochs = 0
 
             try:
                 for epoch in range(1, cfg.max_epochs + 1):
+                    total_epochs = epoch
                     # Deterministic batch permutation per epoch
                     rng = np.random.default_rng(cfg.random_state + epoch)
                     permutation = rng.permutation(n_samples)
@@ -146,11 +150,26 @@ class MLPTrainer:
                         if hasattr(estimator, "loss_") and estimator.loss_ is not None:
                             epoch_losses.append(float(estimator.loss_))
 
-                    # End of epoch telemetry
-                    current_loss = float(estimator.loss_) if hasattr(estimator, "loss_") else (
-                        np.mean(epoch_losses) if epoch_losses else 0.0
+                    # End of epoch telemetry: calculate true average mini-batch loss
+                    current_loss = float(np.mean(epoch_losses)) if epoch_losses else float(
+                        getattr(estimator, "loss_", 0.0)
                     )
                     loss_history.append(current_loss)
+
+                    # Mathematical stopping criterion verification: check loss improvement against tol
+                    if len(loss_history) > 1:
+                        loss_delta = loss_history[-2] - current_loss
+                        if loss_delta < cfg.tol:
+                            consecutive_no_change += 1
+                        else:
+                            consecutive_no_change = 0
+
+                        if consecutive_no_change >= cfg.n_iter_no_change:
+                            stopping_criterion_met = True
+                            logger.info(
+                                f"MLP convergence criterion satisfied at epoch {epoch}: "
+                                f"loss delta < {cfg.tol} for {cfg.n_iter_no_change} consecutive epochs."
+                            )
 
                     pct = (epoch / float(cfg.max_epochs)) * 100.0
                     if progress_tracker:
@@ -165,6 +184,9 @@ class MLPTrainer:
                             current_loss=current_loss,
                             diagnostics={"loss_history": list(loss_history)},
                         )
+
+                    if stopping_criterion_met:
+                        break
 
             except Exception as e:
                 elapsed = time.perf_counter() - start_time
@@ -186,7 +208,6 @@ class MLPTrainer:
                     error_message=str(e),
                 )
 
-            total_epochs = cfg.max_epochs
             final_loss = loss_history[-1] if loss_history else 0.0
 
         else:
@@ -238,8 +259,24 @@ class MLPTrainer:
         elapsed = time.perf_counter() - start_time
         has_warnings = len(captured_warnings) > 0
 
-        status = "Completed with Warnings" if has_warnings else "Completed"
-        convergence_status = "Iteration Limit Reached" if has_warnings else "Converged"
+        # Authentic convergence semantics derivation: distinguish stopping criterion vs epoch limit vs warning
+        if cfg.use_incremental and n_samples > cfg.batch_size:
+            if stopping_criterion_met:
+                status = "Completed"
+                convergence_status = "Converged (Loss Tolerance Met)"
+            else:
+                status = "Completed"
+                convergence_status = "Max Epochs Reached without Convergence"
+        else:
+            if has_warnings:
+                status = "Completed with Warnings"
+                convergence_status = "Maximum Iterations Reached (Convergence Warning)"
+            elif total_epochs < cfg.max_epochs:
+                status = "Completed"
+                convergence_status = "Converged (Loss Tolerance Met)"
+            else:
+                status = "Completed"
+                convergence_status = "Max Epochs Reached without Convergence"
         log_msg = (
             f"MLP training completed in {elapsed:.2f}s across {total_epochs} epochs. "
             f"Final loss: {final_loss:.4f}."

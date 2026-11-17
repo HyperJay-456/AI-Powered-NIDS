@@ -88,6 +88,7 @@ class MLPTrainingConfig:
     tol: float = 1e-4
     random_state: int = 42
     use_incremental: bool = True  # If True, processes in mini-batches via partial_fit
+    n_iter_no_change: int = 5  # Number of epochs with loss improvement < tol to declare convergence
 
     def validate(self) -> None:
         """Validate hyperparameter boundaries."""
@@ -105,6 +106,8 @@ class MLPTrainingConfig:
             raise ValueError(f"MLP learning_rate_init must be positive, got {self.learning_rate_init}")
         if self.max_epochs <= 0:
             raise ValueError(f"MLP max_epochs must be positive, got {self.max_epochs}")
+        if self.n_iter_no_change <= 0:
+            raise ValueError(f"MLP n_iter_no_change must be positive, got {self.n_iter_no_change}")
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation."""

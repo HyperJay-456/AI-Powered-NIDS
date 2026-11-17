@@ -33,6 +33,12 @@ class PreflightCheckResult:
     sparse_density_percent: float
     warning_messages: List[str] = field(default_factory=list)
     rejection_reason: Optional[str] = None
+    is_estimate: bool = True
+    disclaimer: str = (
+        "Memory requirements are empirical working-set estimates based on internal solver representations "
+        "(primal/dual variables, Adam momentums, Cython tree nodes), not rigid mathematical guarantees. "
+        "Subsampling is never performed."
+    )
 
 
 class ResourceManager:
@@ -145,37 +151,58 @@ class ResourceManager:
         matrix_bytes = cls.estimate_sparse_matrix_memory(X)
         target_bytes = int(y.nbytes)
         n_samples, n_features = X.shape
+        nnz = int(X.nnz if hasattr(X, "nnz") else (n_samples * n_features * 0.5))
+        n_classes = len(np.unique(y)) if len(y) > 0 else 2
 
         algo = algorithm.lower().strip()
         if algo == "svm":
-            # LinearSVC creates dual coefficient arrays and temporary sample working buffers
-            # Scaled sparse LinearSVC typically consumes 2.5x to 3.5x sparse matrix size
-            return int(matrix_bytes * 3.0 + target_bytes * 2)
+            # LinearSVC (LibLinear):
+            # 1. Feature nodes array: struct feature_node { int index; double value; } = 16 bytes per nnz
+            # 2. Row pointer array: n_samples * 8 bytes
+            # 3. Dual variables: n_samples * n_classes * 8 bytes
+            # 4. Primal weights: n_features * n_classes * 8 bytes
+            # 5. Working buffer: n_samples * 8 bytes
+            # 6. Runtime overhead: 50 MB
+            liblinear_nodes = nnz * 16
+            row_ptrs = n_samples * 8
+            dual_vars = n_samples * n_classes * 8
+            primal_weights = n_features * n_classes * 8
+            overhead = 50 * 1024 * 1024
+            return int(matrix_bytes + liblinear_nodes + row_ptrs + dual_vars + primal_weights + target_bytes + overhead)
 
         elif algo == "mlp":
-            # Incremental MLPClassifier processes in mini-batches (default 256)
-            # Memory is dominated by batch CSR slice + network weight matrices
+            # Incremental MLPClassifier (partial_fit mini-batches):
+            # 1. Mini-batch sparse slice: (nnz / n_samples) * batch_size * 16 bytes
+            # 2. Forward activations: sum(batch_size * layer_size * 8 bytes)
+            # 3. Backprop gradients: sum(batch_size * layer_size * 8 bytes)
+            # 4. Weight matrices & biases: sum(layer_i * layer_{i+1} * 8 bytes)
+            # 5. Adam optimizer state: 2 * weight_bytes (first and second moments)
+            # 6. CSR matrix held in memory + runtime overhead: 100 MB
             batch_size = getattr(config, "batch_size", 256) if config else 256
-            batch_bytes = int((matrix_bytes / max(1, n_samples)) * batch_size)
+            batch_nnz_bytes = int((nnz / max(1, n_samples)) * batch_size * 16)
             hidden_layers = getattr(config, "hidden_layer_sizes", (64, 32)) if config else (64, 32)
-
-            # Estimate weight matrices: (n_features * h1) + (h1 * h2) + (h2 * n_classes)
-            n_classes = len(np.unique(y)) if len(y) > 0 else 2
             layer_sizes = [n_features] + list(hidden_layers) + [n_classes]
-            weight_params = sum(
-                layer_sizes[i] * layer_sizes[i + 1] for i in range(len(layer_sizes) - 1)
-            )
-            weight_bytes = weight_params * 8  # float64
 
-            # Working buffers for forward/backprop + gradient momentums
-            return int(matrix_bytes + (batch_bytes * 4) + (weight_bytes * 5) + target_bytes)
+            act_bytes = sum(batch_size * ls * 8 for ls in layer_sizes)
+            weight_params = sum(layer_sizes[i] * layer_sizes[i + 1] for i in range(len(layer_sizes) - 1))
+            weight_bytes = weight_params * 8
+            adam_state_bytes = weight_bytes * 2
+            overhead = 100 * 1024 * 1024
+            return int(matrix_bytes + batch_nnz_bytes + (act_bytes * 2) + weight_bytes + adam_state_bytes + target_bytes + overhead)
 
         elif algo == "decision_tree":
-            # DecisionTreeClassifier builds binary tree nodes
-            # On large sparse matrices, node threshold tests and feature sorting can require 4x to 6x
+            # DecisionTreeClassifier (Cython CART):
+            # 1. Sparse splitter buffer: sorting indices and values requires nnz * 8 bytes + n_samples * 8 bytes
+            # 2. Binary tree nodes: 56 bytes per Node struct
+            # 3. Node class value histograms: n_nodes * n_classes * 8 bytes
+            # 4. CSR matrix + runtime overhead: 80 MB
             max_depth = getattr(config, "max_depth", 15) if config else 15
-            depth_multiplier = 4.0 if (max_depth and max_depth <= 20) else 8.0
-            return int(matrix_bytes * depth_multiplier + target_bytes * 3)
+            depth_cap = min(max_depth or 20, 20)
+            estimated_max_nodes = min(2 * n_samples - 1, 2 ** (depth_cap + 1) - 1)
+            splitter_buffer = (nnz * 8) + (n_samples * 8)
+            node_memory = (estimated_max_nodes * 56) + (estimated_max_nodes * n_classes * 8)
+            overhead = 80 * 1024 * 1024
+            return int(matrix_bytes + splitter_buffer + node_memory + target_bytes + overhead)
 
         return int(matrix_bytes * 4.0)
 
@@ -282,25 +309,35 @@ class ResourceManager:
         nnz = int(n_samples * n_features * assumed_density)
         matrix_bytes = (nnz * 4) + (nnz * 4) + ((n_samples + 1) * 4)
         target_bytes = n_samples * 4  # int32 labels
+        n_classes = 15  # expected 15 CIC-IDS-2017 flow categories
 
         algo = algorithm.lower().strip()
         if algo == "svm":
-            return int(matrix_bytes * 3.0 + target_bytes * 2)
+            liblinear_nodes = nnz * 16
+            row_ptrs = n_samples * 8
+            dual_vars = n_samples * n_classes * 8
+            primal_weights = n_features * n_classes * 8
+            overhead = 50 * 1024 * 1024
+            return int(matrix_bytes + liblinear_nodes + row_ptrs + dual_vars + primal_weights + target_bytes + overhead)
         elif algo == "mlp":
             batch_size = getattr(config, "batch_size", 256) if config else 256
-            batch_bytes = int((matrix_bytes / max(1, n_samples)) * batch_size)
+            batch_nnz_bytes = int((nnz / max(1, n_samples)) * batch_size * 16)
             hidden_layers = getattr(config, "hidden_layer_sizes", (64, 32)) if config else (64, 32)
-            n_classes = 15  # worst-case 15 CIC-IDS-2017 attack classes
             layer_sizes = [n_features] + list(hidden_layers) + [n_classes]
-            weight_params = sum(
-                layer_sizes[i] * layer_sizes[i + 1] for i in range(len(layer_sizes) - 1)
-            )
+            act_bytes = sum(batch_size * ls * 8 for ls in layer_sizes)
+            weight_params = sum(layer_sizes[i] * layer_sizes[i + 1] for i in range(len(layer_sizes) - 1))
             weight_bytes = weight_params * 8
-            return int(matrix_bytes + (batch_bytes * 4) + (weight_bytes * 5) + target_bytes)
+            adam_state_bytes = weight_bytes * 2
+            overhead = 100 * 1024 * 1024
+            return int(matrix_bytes + batch_nnz_bytes + (act_bytes * 2) + weight_bytes + adam_state_bytes + target_bytes + overhead)
         elif algo == "decision_tree":
             max_depth = getattr(config, "max_depth", 15) if config else 15
-            depth_multiplier = 4.0 if (max_depth and max_depth <= 20) else 8.0
-            return int(matrix_bytes * depth_multiplier + target_bytes * 3)
+            depth_cap = min(max_depth or 20, 20)
+            estimated_max_nodes = min(2 * n_samples - 1, 2 ** (depth_cap + 1) - 1)
+            splitter_buffer = (nnz * 8) + (n_samples * 8)
+            node_memory = (estimated_max_nodes * 56) + (estimated_max_nodes * n_classes * 8)
+            overhead = 80 * 1024 * 1024
+            return int(matrix_bytes + splitter_buffer + node_memory + target_bytes + overhead)
         return int(matrix_bytes * 4.0)
 
     @classmethod

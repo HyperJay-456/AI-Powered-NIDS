@@ -60,6 +60,8 @@ class ModelArtifactRecord:
     convergence_status: str
     warnings: List[str]
     created_at_utc: str
+    run_type: str = "production"
+    is_test_fixture: bool = False
 
 
 class ModelRegistry:
@@ -84,6 +86,8 @@ class ModelRegistry:
         results_by_algo: Dict[str, Any],  # algorithm -> TrainingResult
         training_manifests: Dict[str, AlgorithmTrainingManifest],
         started_at_utc: str,
+        run_type: str = "production",
+        is_test_fixture: bool = False,
     ) -> Path:
         """Atomically persist trained models, metadata, and master training manifest.
 
@@ -93,6 +97,8 @@ class ModelRegistry:
             results_by_algo: Mapping of algorithm keys to trainer results.
             training_manifests: Mapping of algorithm keys to individual manifests.
             started_at_utc: ISO timestamp when session began.
+            run_type: Execution mode ('production' or 'test_fixture').
+            is_test_fixture: Explicit boolean flag tagging test fixture runs.
 
         Returns:
             Path to the committed training run directory.
@@ -133,6 +139,8 @@ class ModelRegistry:
                     manifest.artifact_checksum = model_sha256
                     manifest.artifact_path = f"models/saved/{training_run_id}/{algo_key}/model.joblib"
                     manifest.model_size_bytes = model_size
+                    manifest.run_type = run_type
+                    manifest.is_test_fixture = is_test_fixture
 
                     # Save metadata.json
                     meta_file = algo_dir / "metadata.json"
@@ -148,6 +156,8 @@ class ModelRegistry:
                 overall_status=overall_status,
                 trained_algorithms=list(results_by_algo.keys()),
                 model_manifests=training_manifests,
+                run_type=run_type,
+                is_test_fixture=is_test_fixture,
             )
 
             manifest_file = temp_dir / "training_manifest.json"
@@ -156,7 +166,7 @@ class ModelRegistry:
 
             # 4. Atomic directory rename
             os.replace(temp_dir, final_dir)
-            logger.info(f"Atomically committed training run to {final_dir}")
+            logger.info(f"Atomically committed training run to {final_dir} (run_type={run_type})")
             return final_dir
 
         except Exception as e:
@@ -165,7 +175,7 @@ class ModelRegistry:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             raise
 
-    def list_training_runs(self) -> List[Dict[str, Any]]:
+    def list_training_runs(self, include_test_fixtures: bool = False) -> List[Dict[str, Any]]:
         """List all valid persisted training runs in reverse chronological order."""
         if not self.saved_dir.exists():
             return []
@@ -183,6 +193,11 @@ class ModelRegistry:
                 with open(manifest_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
+                # Filter out test fixtures unless explicitly requested
+                if not include_test_fixtures:
+                    if data.get("is_test_fixture", False) or data.get("run_type") in ("test", "fixture", "test_fixture"):
+                        continue
+
                 runs.append({
                     "session_run_id": data.get("session_run_id", run_dir.name),
                     "engineering_run_id": data.get("engineering_run_id", "unknown"),
@@ -192,17 +207,23 @@ class ModelRegistry:
                     "trained_algorithms": data.get("trained_algorithms", []),
                     "model_count": len(data.get("model_manifests", {})),
                     "path": str(run_dir),
+                    "run_type": data.get("run_type", "production"),
+                    "is_test_fixture": data.get("is_test_fixture", False),
                 })
             except Exception as e:
                 logger.debug(f"Failed to read training manifest in {run_dir}: {e}")
 
         return runs
 
-    def list_all_trained_models(self) -> List[ModelArtifactRecord]:
+    def list_all_trained_models(
+        self,
+        include_test_fixtures: bool = False,
+        verify_sha256: bool = True,
+    ) -> List[ModelArtifactRecord]:
         """Discover every registered individual model across all training runs."""
         models: List[ModelArtifactRecord] = []
 
-        for run in self.list_training_runs():
+        for run in self.list_training_runs(include_test_fixtures=include_test_fixtures):
             run_id = run["session_run_id"]
             run_dir = self.saved_dir / run_id
 
@@ -225,6 +246,20 @@ class ModelRegistry:
                     except Exception:
                         pass
 
+                # Filter out test fixtures if requested
+                if not include_test_fixtures:
+                    if meta.get("is_test_fixture", False) or meta.get("run_type") in ("test", "fixture", "test_fixture"):
+                        continue
+
+                # Verify SHA-256 before marking model as available
+                if verify_sha256:
+                    if not self.verify_model_integrity(run_id, algo_key):
+                        logger.warning(
+                            f"Model integrity verification failed for '{run_id}/{algo_key}'. "
+                            "Excluding corrupted or mismatched artifact from registry."
+                        )
+                        continue
+
                 models.append(ModelArtifactRecord(
                     training_run_id=run_id,
                     algorithm=algo_key,
@@ -243,14 +278,20 @@ class ModelRegistry:
                     convergence_status=meta.get("convergence_status", "Converged"),
                     warnings=meta.get("warnings", []),
                     created_at_utc=meta.get("completed_at_utc", run.get("completed_at_utc", "")),
+                    run_type=meta.get("run_type", run.get("run_type", "production")),
+                    is_test_fixture=meta.get("is_test_fixture", run.get("is_test_fixture", False)),
                 ))
 
         return models
 
-    def get_latest_model(self, algorithm: str) -> Optional[ModelArtifactRecord]:
+    def get_latest_model(
+        self,
+        algorithm: str,
+        include_test_fixtures: bool = False,
+    ) -> Optional[ModelArtifactRecord]:
         """Retrieve the most recent verified model artifact for a specific algorithm."""
         algo = algorithm.lower().strip()
-        all_models = self.list_all_trained_models()
+        all_models = self.list_all_trained_models(include_test_fixtures=include_test_fixtures, verify_sha256=True)
         matching = [m for m in all_models if m.algorithm == algo and m.status in ("Completed", "Completed with Warnings")]
         return matching[0] if matching else None
 
