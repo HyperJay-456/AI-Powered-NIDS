@@ -12,10 +12,12 @@ from dashboard.components.panels import info_panel
 from dashboard.status_checker import (
     DatasetEngineeringStatus,
     DatasetStatus,
+    ModelEvaluationStatus,
     ModelSystemStatus,
     check_dataset_engineering_status,
     check_dataset_status,
     check_latest_analysis_status,
+    check_model_evaluation_status,
     check_model_status,
     check_traffic_analysis_status,
     get_detection_pipeline_stages,
@@ -26,7 +28,18 @@ from dashboard.status_checker import (
 def _render_header() -> None:
     """Render Section A: Dashboard Header."""
     eng_status = check_dataset_engineering_status(session_state=st.session_state)
-    cp_badge = ("CP-05 Completed", "success") if eng_status.is_completed else ("CP-05 Active", "info")
+    md_status = check_model_status()
+    eval_status = check_model_evaluation_status()
+
+    if eval_status.is_completed:
+        cp_badge = ("CP-07 Completed", "success")
+    elif md_status.trained_count > 0:
+        cp_badge = ("CP-07 Active", "info")
+    elif eng_status.is_completed:
+        cp_badge = ("CP-06 Active", "info")
+    else:
+        cp_badge = ("CP-05 Active", "info")
+
     page_header(
         title="Network Security Overview",
         subtitle=(

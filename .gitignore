@@ -83,6 +83,8 @@ data/metadata/*
 # Machine Learning Models & Serialized Binaries (Strictly Excluded)
 models/saved/*
 !models/saved/.gitkeep
+models/evaluations/*
+!models/evaluations/.gitkeep
 *.pkl
 *.joblib
 *.onnx

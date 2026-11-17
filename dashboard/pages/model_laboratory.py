@@ -10,6 +10,7 @@ import html
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -19,6 +20,17 @@ from dashboard.components.cards import content_card, metric_card
 from dashboard.components.headers import page_header, section_header
 from dashboard.components.panels import error_panel, info_panel, success_panel, warning_panel
 from src.data.engineering.artifact_manager import ArtifactManager
+from src.evaluation import (
+    ArtifactVerifier,
+    ConfusionMatrixEngine,
+    EvaluationOrchestrator,
+    EvaluationRegistry,
+    EvaluationResourceManager,
+    ModelComparator,
+    PrecisionRecallAnalyzer,
+    ROCAnalyzer,
+    SecurityMetricsEngine,
+)
 from src.models.artifact_loader import CP05ArtifactLoader
 from src.models.model_config import (
     AuthorizedAlgorithm,
@@ -502,8 +514,468 @@ def _render_training_tab(
                         warning_panel("Solver Warning", w)
 
 
+def _render_evaluation_tab(
+    artifact_mgr: ArtifactManager,
+    registry: ModelRegistry,
+    completed_runs: List[Any],
+) -> None:
+    """Render the Model Evaluation Laboratory tab (CP-07)."""
+    verifier = ArtifactVerifier(
+        saved_models_dir=registry.saved_dir,
+        processed_dir=artifact_mgr.processed_dir,
+    )
+    eval_registry = EvaluationRegistry(evaluations_dir=settings.evaluations_dir)
+    orchestrator = EvaluationOrchestrator(
+        saved_models_dir=registry.saved_dir,
+        processed_dir=artifact_mgr.processed_dir,
+        evaluations_dir=settings.evaluations_dir,
+    )
+
+    # Section A: Evaluation Readiness
+    section_header(
+        title="Section A — Evaluation Readiness & Asset Verification",
+        description="Verifying CP-05 engineering run provenance, partition availability, and eligible production model artifacts:",
+    )
+
+    eligible_models = verifier.discover_eligible_production_models(allow_test_fixtures=False)
+
+    col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+    with col_r1:
+        metric_card(
+            label="Eligible Production Models",
+            value=f"{len(eligible_models)} Models" if eligible_models else "0 Models",
+            subtitle="Verified SHA-256 & Schema",
+            status_color="var(--color-status-success)" if eligible_models else "var(--color-status-warning)",
+        )
+    with col_r2:
+        eng_run_id = eligible_models[0].engineering_run_id if eligible_models else (completed_runs[0].run_id if completed_runs else "None")
+        metric_card(
+            label="Source CP-05 Run",
+            value=eng_run_id[:16] + "..." if len(eng_run_id) > 16 else eng_run_id,
+            subtitle="Engineered partition provenance",
+            status_color="var(--color-accent-primary)",
+        )
+    with col_r3:
+        has_val = False
+        if completed_runs:
+            val_path = Path(completed_runs[0].artifact_directory) / "datasets" / "validation"
+            has_val = val_path.exists() and (val_path / "X_scaled.npz").exists()
+        metric_card(
+            label="Validation Partition",
+            value="Available" if has_val else "Missing",
+            subtitle="Holdout for model selection",
+            status_color="var(--color-status-success)" if has_val else "var(--color-status-error)",
+        )
+    with col_r4:
+        has_test = False
+        if completed_runs:
+            test_path = Path(completed_runs[0].artifact_directory) / "datasets" / "test"
+            has_test = test_path.exists() and (test_path / "X_scaled.npz").exists()
+        metric_card(
+            label="Test Holdout Partition",
+            value="Available (Locked)" if has_test else "Missing",
+            subtitle="Gated final holdout partition",
+            status_color="var(--color-status-info)" if has_test else "var(--color-status-error)",
+        )
+
+    # If no eligible production models exist, show informative empty state and return
+    if not eligible_models:
+        st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+        info_panel(
+            title="No Verified Production Models Available",
+            message=(
+                "The Model Evaluation Laboratory requires trained, verified production models in 'models/saved/'. "
+                "No completed production models were detected. "
+                "Automated test fixtures are strictly excluded from production evaluation. "
+                "Please navigate to the 'Model Training Engine' tab to train and register SVM, MLP, or Decision Tree models first."
+            ),
+            icon="ℹ️",
+        )
+        return
+
+    # Section B: Model Selection
+    section_header(
+        title="Section B — Model Selection for Evaluation",
+        description="Select verified production models to benchmark and evaluate on held-out validation telemetry:",
+    )
+
+    available_algo_keys = [m.algorithm for m in eligible_models]
+    algo_display_map = {
+        "svm": "Support Vector Machine (LinearSVC)",
+        "mlp": "Multilayer Perceptron (MLP)",
+        "decision_tree": "Decision Tree (CART)",
+    }
+
+    selected_algos = st.multiselect(
+        "Select Algorithms to Evaluate:",
+        options=available_algo_keys,
+        default=available_algo_keys,
+        format_func=lambda k: algo_display_map.get(k, k.upper()),
+        key="eval_selected_algorithms",
+    )
+
+    if not selected_algos:
+        warning_panel("No Models Selected", "Please select at least one algorithm to proceed with evaluation.")
+        return
+
+    # Display selected model cards
+    cols_m = st.columns(len(selected_algos))
+    for idx, algo_k in enumerate(selected_algos):
+        m_rec = next(m for m in eligible_models if m.algorithm == algo_k)
+        rep_type = "Unscaled Sparse CSR" if algo_k == "decision_tree" else "Scaled Sparse CSR"
+        with cols_m[idx]:
+            st.markdown(
+                f"""
+                <div class="nids-card" style="margin-bottom: 0;">
+                    <div class="nids-card-title">{algo_display_map.get(algo_k, algo_k.upper())}</div>
+                    <div style="font-size: 0.8125rem; color: var(--color-text-secondary); line-height: 1.7;">
+                        <div><strong>Run ID:</strong> <code>{m_rec.training_run_id[:18]}...</code></div>
+                        <div><strong>Features:</strong> {m_rec.feature_count} attributes</div>
+                        <div><strong>Classes:</strong> {m_rec.class_count} categories</div>
+                        <div><strong>Input Rep:</strong> {rep_type}</div>
+                        <div><strong>Integrity:</strong> {badge_html('SHA-256 Valid', variant='success')}</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # Section C: Validation Evaluation
+    section_header(
+        title="Section C — Validation Evaluation (Model Selection & Diagnostics)",
+        description="Evaluate models against the validation partition to measure classification accuracy, class-wise sensitivity, and false alarm rates:",
+    )
+
+    info_panel(
+        title="Zero-Retraining Evaluation Protocol",
+        message=(
+            "Evaluation executes inference against the frozen weights of selected models on the validation partition. "
+            "No fitting, refitting, or weight updates are performed. "
+            "Results inform comparative benchmarking and candidate selection before final test gating."
+        ),
+        icon="⚖️",
+    )
+
+    # Session state for active evaluation manifest
+    manifest_key = f"active_eval_manifest_{eligible_models[0].training_run_id}"
+    active_manifest = st.session_state.get(manifest_key)
+
+    col_btn, _ = st.columns([1, 2])
+    with col_btn:
+        if st.button("Run Validation Evaluation 🚀", key="btn_run_val_eval"):
+            progress_bar = st.progress(0.0)
+            status_text = st.empty()
+
+            def _progress_cb(processed: int, total: int, msg: str) -> None:
+                frac = min(1.0, max(0.0, processed / total)) if total > 0 else 0.0
+                progress_bar.progress(frac)
+                status_text.caption(f"⚙️ {msg}")
+
+            try:
+                new_manifest = orchestrator.run_validation_evaluation(
+                    training_run_id=eligible_models[0].training_run_id,
+                    algorithms=selected_algos,
+                    allow_test_fixtures=False,
+                    progress_callback=_progress_cb,
+                )
+                st.session_state[manifest_key] = new_manifest
+                active_manifest = new_manifest
+                progress_bar.progress(1.0)
+                status_text.empty()
+                success_panel("Validation Complete", f"Successfully evaluated {len(selected_algos)} models on validation partition.")
+                st.rerun()
+            except Exception as e:
+                error_panel("Evaluation Error", f"Failed to execute validation evaluation: {e}")
+
+    # If no evaluation run yet in session state, check if registry has existing run for this training session
+    if not active_manifest:
+        past_runs = eval_registry.list_evaluation_runs()
+        matching = [r for r in past_runs if r.get("training_session_id") == eligible_models[0].training_run_id]
+        if matching:
+            loaded_m = eval_registry.get_evaluation_manifest(matching[0]["evaluation_run_id"])
+            if loaded_m and loaded_m.validation_results:
+                active_manifest = loaded_m
+                st.session_state[manifest_key] = loaded_m
+
+    if not active_manifest or not active_manifest.validation_results:
+        st.info("Validation evaluation has not been executed yet. Click 'Run Validation Evaluation' above to begin.")
+        return
+
+    # Display Validation Results
+    val_results = active_manifest.validation_results
+
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+    st.subheader("Validation Aggregate Performance Comparison")
+    val_df = ModelComparator.build_validation_comparison_dataframe(val_results)
+    st.dataframe(val_df, use_container_width=True)
+
+    # Detailed Algorithm Diagnostic Views (Tabs per algorithm)
+    algo_tabs = st.tabs([algo_display_map.get(k, k.upper()) for k in val_results.keys()])
+    for idx, (algo_k, a_res) in enumerate(val_results.items()):
+        with algo_tabs[idx]:
+            # Metric cards
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                metric_card("Accuracy", f"{a_res.aggregate_metrics.accuracy * 100:.2f}%", subtitle="Overall validation accuracy")
+            with c2:
+                metric_card("Macro F1-Score", f"{a_res.aggregate_metrics.macro_f1 * 100:.2f}%", subtitle="Unweighted attack mean")
+            with c3:
+                sec = a_res.security_metrics
+                far_text = f"{sec.benign_false_alarm_rate * 100:.2f}%" if sec.is_available and sec.benign_false_alarm_rate is not None else "N/A"
+                metric_card("False Alarm Rate", far_text, subtitle="Benign flows flagged as attack")
+            with c4:
+                rec_text = f"{sec.attack_detection_recall * 100:.2f}%" if sec.is_available and sec.attack_detection_recall is not None else "N/A"
+                metric_card("Attack Detection Recall", rec_text, subtitle="Actual intrusions detected")
+
+            # Row: Confusion Matrix + Security Summary
+            col_cm, col_sec = st.columns([1.3, 1])
+            with col_cm:
+                st.markdown("##### Multiclass Confusion Matrix")
+                norm_toggle = st.radio(
+                    "Display Mode:",
+                    options=["Raw Counts", "Row-Normalized (%)"],
+                    horizontal=True,
+                    key=f"cm_toggle_{algo_k}",
+                )
+                cm_fig = ConfusionMatrixEngine.create_plotly_heatmap(
+                    a_res.confusion_matrix,
+                    normalized=(norm_toggle == "Row-Normalized (%)"),
+                    title=f"Confusion Matrix — {a_res.algorithm_display_name}",
+                )
+                st.plotly_chart(cm_fig, use_container_width=True)
+
+            with col_sec:
+                st.markdown("##### Security-Oriented Benign vs Attack Summary")
+                if a_res.security_metrics.is_available:
+                    sec_rec = a_res.security_metrics
+                    st.markdown(
+                        f"""
+                        <div class="nids-card" style="margin-bottom: 0;">
+                            <div class="nids-card-title">Intrusion Detection Telemetry</div>
+                            <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.9;">
+                                <div><strong>Benign Baseline Label:</strong> <code>{sec_rec.benign_label}</code></div>
+                                <div><strong>Total Benign Flows:</strong> {sec_rec.benign_records_count:,}</div>
+                                <div><strong>Total Attack Flows:</strong> {sec_rec.attack_records_count:,}</div>
+                                <div><strong>Attack Detection Recall:</strong> {sec_rec.attack_detection_recall * 100:.2f}%</div>
+                                <div><strong>Attack Precision:</strong> {sec_rec.attack_precision * 100:.2f}%</div>
+                                <div><strong>Attack F1-Score:</strong> {sec_rec.attack_f1 * 100:.2f}%</div>
+                                <div><strong>Benign False Alarm Rate (FAR):</strong> <span style="color: var(--color-status-warning); font-weight: 600;">{sec_rec.benign_false_alarm_rate * 100:.2f}%</span></div>
+                                <div><strong>Benign Specificity:</strong> {sec_rec.benign_specificity * 100:.2f}%</div>
+                                <div><strong>Attack Miss Rate (FNR):</strong> {sec_rec.attack_false_negative_rate * 100:.2f}%</div>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.info(f"Binary security view unavailable: {a_res.security_metrics.unavailable_reason}")
+
+            # Row: ROC and Precision-Recall Curves
+            col_roc, col_pr = st.columns([1, 1])
+            with col_roc:
+                st.markdown("##### One-vs-Rest ROC Curves")
+                if a_res.score_type != "none":
+                    roc_fig = ROCAnalyzer.create_plotly_roc_chart(
+                        a_res.roc_analysis,
+                        a_res.macro_roc_auc,
+                        a_res.algorithm_display_name,
+                    )
+                    st.plotly_chart(roc_fig, use_container_width=True)
+                    score_desc = "Signed Margin Distances (decision_function)" if a_res.score_type == "decision_function" else "Model Probabilities (predict_proba)"
+                    st.caption(f"Score Metric: {score_desc}. Never labeled as calibrated probabilities.")
+                else:
+                    st.info("Continuous scores unavailable for ROC analysis.")
+
+            with col_pr:
+                st.markdown("##### One-vs-Rest Precision-Recall Curves")
+                if a_res.score_type != "none":
+                    pr_fig = PrecisionRecallAnalyzer.create_plotly_pr_chart(
+                        a_res.pr_analysis,
+                        a_res.macro_average_precision,
+                        a_res.algorithm_display_name,
+                    )
+                    st.plotly_chart(pr_fig, use_container_width=True)
+                    st.caption(f"Macro Average Precision: {a_res.macro_average_precision:.4f}" if a_res.macro_average_precision is not None else "Macro AP: N/A")
+                else:
+                    st.info("Continuous scores unavailable for PR analysis.")
+
+            # Per-class table
+            st.markdown("##### Class-Wise Diagnostic Breakdown")
+            class_rows = []
+            for m in a_res.per_class_metrics:
+                class_rows.append({
+                    "Class Index": m.class_index,
+                    "Attack Category": m.class_name,
+                    "Support": m.support,
+                    "Predicted": m.predicted_count,
+                    "Precision": f"{m.precision * 100:.2f}%",
+                    "Recall": f"{m.recall * 100:.2f}%",
+                    "F1-Score": f"{m.f1_score * 100:.2f}%",
+                    "Specificity": f"{m.specificity * 100:.2f}%",
+                    "False Pos Rate": f"{m.false_positive_rate * 100:.2f}%",
+                    "False Neg Rate": f"{m.false_negative_rate * 100:.2f}%",
+                    "Diagnostics": m.notes or "OK",
+                })
+            st.dataframe(pd.DataFrame(class_rows), use_container_width=True)
+
+    # Class-wise multi-model comparison table
+    if len(val_results) > 1:
+        st.markdown("##### Multi-Model Class-Wise Recall Comparison")
+        cw_df = ModelComparator.build_classwise_comparison_dataframe(val_results)
+        st.dataframe(cw_df, use_container_width=True)
+
+    # Section D: Candidate Selection & Freezing
+    section_header(
+        title="Section D — Validation-Based Candidate Selection & Freezing",
+        description="Select and freeze candidate models based on validation performance before evaluating on final holdout test data:",
+    )
+
+    is_frozen = bool(active_manifest.frozen_candidates)
+
+    if is_frozen:
+        primary_k = next((k for k, v in active_manifest.frozen_candidates.items() if v.selected_as_primary), "None")
+        frozen_info = active_manifest.frozen_candidates.get(primary_k)
+        success_panel(
+            title="Candidate Models Frozen 🔒",
+            message=(
+                f"Candidate models were locked at {frozen_info.frozen_at_utc[:19] if frozen_info else 'N/A'} UTC. "
+                f"Designated Primary Candidate: '{algo_display_map.get(primary_k, primary_k.upper())}'. "
+                f"Selection Criterion: {frozen_info.selection_criterion if frozen_info else 'Standard'}. "
+                "All model artifact checksums are locked."
+            ),
+        )
+    else:
+        col_cand1, col_cand2 = st.columns([1, 2])
+        with col_cand1:
+            chosen_primary = st.selectbox(
+                "Designate Primary Candidate Model:",
+                options=list(val_results.keys()),
+                format_func=lambda k: algo_display_map.get(k, k.upper()),
+                key="sb_primary_candidate",
+            )
+        with col_cand2:
+            criterion_text = st.text_input(
+                "Documented Selection Criterion:",
+                value="Highest validation macro F1-score with balanced recall on rare attacks and lowest false alarm rate",
+                key="txt_selection_criterion",
+            )
+
+        if st.button("Freeze Candidate Models 🔒", key="btn_freeze_candidates"):
+            try:
+                updated_m = orchestrator.freeze_candidate_models(
+                    evaluation_run_id=active_manifest.evaluation_run_id,
+                    primary_candidate_algo=chosen_primary,
+                    selection_criterion=criterion_text,
+                )
+                st.session_state[manifest_key] = updated_m
+                active_manifest = updated_m
+                st.success(f"Candidate models successfully frozen! Primary candidate: '{chosen_primary.upper()}'.")
+                st.rerun()
+            except Exception as e:
+                error_panel("Freeze Error", f"Failed to freeze candidate models: {e}")
+
+    # Section E: Gated Final Test Evaluation
+    section_header(
+        title="Section E — Gated Final Test Evaluation (Immutable Holdout)",
+        description="Evaluate frozen candidate models strictly against the held-out test partition. Gated by explicit protocol confirmation:",
+    )
+
+    warning_panel(
+        title="Strict Evaluation Protocol Guardrail",
+        message=(
+            "The test partition is a final immutable holdout reserved strictly for unbiased generalization assessment. "
+            "Under academic ML integrity standards, test metrics must NEVER be used to choose models, tune hyperparameters, "
+            "select classification thresholds, or modify feature engineering pipelines."
+        ),
+    )
+
+    test_completed = bool(active_manifest.test_results)
+
+    if not is_frozen:
+        info_panel(
+            title="Test Holdout Locked",
+            message="Candidate models must be selected and frozen in Section D before final test evaluation is unlocked.",
+            icon="🔒",
+        )
+    else:
+        if not test_completed:
+            chk_confirm = st.checkbox(
+                "I confirm that candidate models are frozen, and test results will NOT be used for model tuning or selection.",
+                key="chk_test_gate_confirm",
+            )
+            col_t_btn, _ = st.columns([1, 2])
+            with col_t_btn:
+                if st.button("Run Final Test Evaluation 🛡️", disabled=not chk_confirm, key="btn_run_test_eval"):
+                    t_progress = st.progress(0.0)
+                    t_status = st.empty()
+
+                    def _t_cb(processed: int, total: int, msg: str) -> None:
+                        f_val = min(1.0, max(0.0, processed / total)) if total > 0 else 0.0
+                        t_progress.progress(f_val)
+                        t_status.caption(f"⚙️ {msg}")
+
+                    try:
+                        updated_m = orchestrator.run_gated_test_evaluation(
+                            evaluation_run_id=active_manifest.evaluation_run_id,
+                            confirmation_token="CONFIRM_TEST_EVALUATION",
+                            notes="User confirmed protocol compliance via UI gate.",
+                            progress_callback=_t_cb,
+                        )
+                        st.session_state[manifest_key] = updated_m
+                        active_manifest = updated_m
+                        t_progress.progress(1.0)
+                        t_status.empty()
+                        success_panel("Test Evaluation Complete", "Successfully evaluated frozen candidate models on final held-out test partition.")
+                        st.rerun()
+                    except Exception as e:
+                        error_panel("Test Evaluation Error", f"Failed to execute final test evaluation: {e}")
+
+    # Section F: Final Test Results & Generalization Gap Analysis
+    if test_completed:
+        section_header(
+            title="Section F — Final Test Evaluation Results & Generalization Analysis",
+            description="Inspect final held-out test metrics and compare against validation performance to assess generalization gaps:",
+        )
+
+        st.markdown("##### Validation vs Holdout Test Generalization Gap Analysis")
+        gap_df = ModelComparator.build_generalization_gap_dataframe(
+            val_results=active_manifest.validation_results,
+            test_results=active_manifest.test_results,
+        )
+        st.dataframe(gap_df, use_container_width=True)
+
+        st.markdown("##### Final Test Aggregate Performance")
+        test_df = ModelComparator.build_validation_comparison_dataframe(active_manifest.test_results)
+        st.dataframe(test_df, use_container_width=True)
+
+    # Section G: Evaluation History
+    section_header(
+        title="Section G — Evaluation Run Registry & Audit Trail",
+        description="Persisted evaluation sessions stored in models/evaluations/:",
+    )
+
+    all_eval_runs = eval_registry.list_evaluation_runs()
+    if all_eval_runs:
+        eval_history_data = []
+        for r in all_eval_runs:
+            eval_history_data.append({
+                "Evaluation Run ID": r["evaluation_run_id"],
+                "Source CP-05 Run": r["engineering_run_id"][:16] + "...",
+                "Training Session": r["training_session_id"][:16] + "...",
+                "Evaluated Models": ", ".join(r["evaluated_algorithms"]).upper(),
+                "Partitions": ", ".join(r["partitions_evaluated"]),
+                "Test Gate Confirmed": "Yes" if r.get("test_gate_confirmed") else "No",
+                "Created (UTC)": r["created_at_utc"][:19] if r["created_at_utc"] else "N/A",
+            })
+        st.dataframe(pd.DataFrame(eval_history_data), use_container_width=True)
+    else:
+        st.info("No past evaluation sessions recorded yet.")
+
+
 def _render_registry_tab(registry: ModelRegistry) -> None:
-    """Render the Model Registry and Saved Artifacts tab."""
+    """Render the Model & Evaluation Registry tab."""
+    eval_registry = EvaluationRegistry(evaluations_dir=settings.evaluations_dir)
+
     section_header(
         title="Persisted Training Sessions",
         description="All registered training sessions stored in models/saved/:",
@@ -517,20 +989,19 @@ def _render_registry_tab(registry: ModelRegistry) -> None:
             message="No trained models have been persisted yet. Execute a training run from the 'Model Training Engine' tab to generate verified model artifacts.",
             icon="📦",
         )
-        return
-
-    # Render training runs summary table
-    run_table_data = []
-    for r in runs:
-        run_table_data.append({
-            "Training Run ID": r["session_run_id"],
-            "Source CP-05 Run": r["engineering_run_id"],
-            "Status": r["overall_status"],
-            "Trained Models": ", ".join(r["trained_algorithms"]).upper(),
-            "Models Count": r["model_count"],
-            "Completed At (UTC)": r["completed_at_utc"][:19] if r["completed_at_utc"] else "N/A",
-        })
-    st.dataframe(run_table_data, use_container_width=True)
+    else:
+        # Render training runs summary table
+        run_table_data = []
+        for r in runs:
+            run_table_data.append({
+                "Training Run ID": r["session_run_id"],
+                "Source CP-05 Run": r["engineering_run_id"],
+                "Status": r["overall_status"],
+                "Trained Models": ", ".join(r["trained_algorithms"]).upper(),
+                "Models Count": r["model_count"],
+                "Completed At (UTC)": r["completed_at_utc"][:19] if r["completed_at_utc"] else "N/A",
+            })
+        st.dataframe(run_table_data, use_container_width=True)
 
     section_header(
         title="Registered Model Artifacts & Cryptographic Verification",
@@ -541,79 +1012,107 @@ def _render_registry_tab(registry: ModelRegistry) -> None:
 
     if not models:
         st.info("No individual model artifacts discovered.")
-        return
+    else:
+        for m in models:
+            is_intact = registry.verify_model_integrity(m.training_run_id, m.algorithm)
+            intact_badge = badge_html("Verified (SHA-256 Valid)", variant="success") if is_intact else badge_html("Checksum Mismatch", variant="error")
 
-    for m in models:
-        is_intact = registry.verify_model_integrity(m.training_run_id, m.algorithm)
-        intact_badge = badge_html("Verified (SHA-256 Valid)", variant="success") if is_intact else badge_html("Checksum Mismatch", variant="error")
-
-        with st.expander(f"📦 {m.algorithm_display_name} — Run `{m.training_run_id}`"):
-            col_m1, col_m2 = st.columns([1, 1])
-            with col_m1:
-                st.markdown(
-                    f"""
-                    <div class="nids-card" style="margin-bottom: 0;">
-                        <div class="nids-card-title">Artifact Telemetry</div>
-                        <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.8;">
-                            <div><strong>Algorithm Key:</strong> <code>{m.algorithm}</code></div>
-                            <div><strong>Estimator Class:</strong> <code>{m.estimator_class}</code></div>
-                            <div><strong>Artifact Path:</strong> <code>{m.artifact_path}</code></div>
-                            <div><strong>Model Size:</strong> {m.model_size_bytes / (1024*1024):.2f} MB ({m.model_size_bytes:,} bytes)</div>
-                            <div><strong>Integrity Check:</strong> {intact_badge}</div>
-                            <div><strong>SHA-256:</strong> <code style="font-size: 0.75rem;">{m.model_file_sha256}</code></div>
+            with st.expander(f"📦 {m.algorithm_display_name} — Run `{m.training_run_id}`"):
+                col_m1, col_m2 = st.columns([1, 1])
+                with col_m1:
+                    st.markdown(
+                        f"""
+                        <div class="nids-card" style="margin-bottom: 0;">
+                            <div class="nids-card-title">Artifact Telemetry</div>
+                            <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.8;">
+                                <div><strong>Algorithm Key:</strong> <code>{m.algorithm}</code></div>
+                                <div><strong>Estimator Class:</strong> <code>{m.estimator_class}</code></div>
+                                <div><strong>Artifact Path:</strong> <code>{m.artifact_path}</code></div>
+                                <div><strong>Model Size:</strong> {m.model_size_bytes / (1024*1024):.2f} MB ({m.model_size_bytes:,} bytes)</div>
+                                <div><strong>Integrity Check:</strong> {intact_badge}</div>
+                                <div><strong>SHA-256:</strong> <code style="font-size: 0.75rem;">{m.model_file_sha256}</code></div>
+                            </div>
                         </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            with col_m2:
-                st.markdown(
-                    f"""
-                    <div class="nids-card" style="margin-bottom: 0;">
-                        <div class="nids-card-title">Training Provenance</div>
-                        <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.8;">
-                            <div><strong>CP-05 Source Run:</strong> <code>{m.engineering_run_id}</code></div>
-                            <div><strong>Training Samples:</strong> {m.training_samples:,} rows</div>
-                            <div><strong>Feature Dimensions:</strong> {m.feature_count} features</div>
-                            <div><strong>Classes:</strong> {m.class_count} categories ({", ".join(m.classes)})</div>
-                            <div><strong>Training Time:</strong> {m.training_duration_seconds:.2f} seconds</div>
-                            <div><strong>Convergence:</strong> {m.convergence_status}</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                with col_m2:
+                    st.markdown(
+                        f"""
+                        <div class="nids-card" style="margin-bottom: 0;">
+                            <div class="nids-card-title">Training Provenance</div>
+                            <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.8;">
+                                <div><strong>CP-05 Source Run:</strong> <code>{m.engineering_run_id}</code></div>
+                                <div><strong>Training Samples:</strong> {m.training_samples:,} rows</div>
+                                <div><strong>Feature Dimensions:</strong> {m.feature_count} features</div>
+                                <div><strong>Classes:</strong> {m.class_count} categories ({", ".join(m.classes)})</div>
+                                <div><strong>Training Time:</strong> {m.training_duration_seconds:.2f} seconds</div>
+                                <div><strong>Convergence:</strong> {m.convergence_status}</div>
+                            </div>
                         </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
-            # Read metadata JSON if present
-            meta_path = Path(m.artifact_path).parent / "metadata.json"
-            if meta_path.exists():
-                with open(meta_path, "r", encoding="utf-8") as f:
-                    meta_json = json.load(f)
-                with st.expander("📄 View Serialized Manifest (metadata.json)"):
-                    st.json(meta_json)
+                # Read metadata JSON if present
+                meta_path = Path(m.artifact_path).parent / "metadata.json"
+                if meta_path.exists():
+                    with open(meta_path, "r", encoding="utf-8") as f:
+                        meta_json = json.load(f)
+                    with st.expander("📄 View Serialized Manifest (metadata.json)"):
+                        st.json(meta_json)
+
+    # Persisted Evaluation Runs section
+    section_header(
+        title="Persisted Evaluation Runs & Manifests",
+        description="All evaluation sessions stored in models/evaluations/:",
+    )
+
+    eval_runs = eval_registry.list_evaluation_runs()
+    if not eval_runs:
+        st.info("No evaluation sessions have been saved yet.")
+    else:
+        eval_table = []
+        for er in eval_runs:
+            eval_table.append({
+                "Evaluation Run ID": er["evaluation_run_id"],
+                "Source CP-05 Run": er["engineering_run_id"],
+                "Training Run ID": er["training_session_id"],
+                "Evaluated Models": ", ".join(er["evaluated_algorithms"]).upper(),
+                "Partitions": ", ".join(er["partitions_evaluated"]),
+                "Test Gate Confirmed": "Yes" if er.get("test_gate_confirmed") else "No",
+                "Created At (UTC)": er["created_at_utc"][:19] if er["created_at_utc"] else "N/A",
+            })
+        st.dataframe(pd.DataFrame(eval_table), use_container_width=True)
+
+        for er in eval_runs:
+            man = eval_registry.get_evaluation_manifest(er["evaluation_run_id"])
+            if man:
+                with st.expander(f"📊 Evaluation Manifest `{er['evaluation_run_id']}`"):
+                    st.json(man.to_dict())
 
 
 def render() -> None:
     """Render the master Model Laboratory view."""
     page_header(
-        title="Model Training Laboratory",
-        subtitle="Resource-aware training pipeline, hyperparameter tuning & atomic model registry",
+        title="Model Training & Evaluation Laboratory",
+        subtitle="Zero-retraining evaluation, multi-model benchmarking & gated holdout verification",
         icon="🧪",
         badges=[
-            ("CP-06: Active", "success"),
+            ("CP-07: Active", "success"),
             ("3 Authorized Algorithms", "info"),
-            ("Train Only • Zero Leakage", "neutral"),
+            ("Validation Selection & Gated Test Holdout", "neutral"),
         ],
     )
 
     # Architectural Scope & Stage Guardrail Notice
     info_panel(
-        title="CP-06 Scope & Evaluation Isolation Guardrail",
+        title="CP-07 Evaluation Protocol & Zero-Retraining Invariant",
         message=(
-            "This module executes model fitting, parameter tuning, resource estimation, and atomic serialization into models/saved/. "
-            "In strict adherence to the project plan, 5-fold cross-validation, confusion matrices, ROC-AUC curves, and test split evaluation "
-            "are strictly isolated and scheduled for Checkpoint CP-07 (Model Evaluation Laboratory). "
-            "Validation and test partitions remain completely untouched."
+            "The Model Evaluation Laboratory evaluates existing, verified production model artifacts without refitting or updating. "
+            "Validation partition results inform model comparison, diagnostic breakdown, and candidate selection. "
+            "The held-out test partition is strictly gated, requiring candidate artifact freezing and explicit confirmation before evaluation. "
+            "Never tune models or hyperparameters based on test partition performance."
         ),
         icon="🛡️",
     )
@@ -631,9 +1130,10 @@ def render() -> None:
         return
 
     # Render Tabs
-    tab_training, tab_registry = st.tabs([
+    tab_training, tab_evaluation, tab_registry = st.tabs([
         "🚀 Model Training Engine",
-        "📦 Model Registry & Saved Artifacts",
+        "📊 Model Evaluation Laboratory",
+        "📦 Model & Evaluation Registry",
     ])
 
     with tab_training:
@@ -642,6 +1142,13 @@ def render() -> None:
             resource_mgr=resource_mgr,
             registry=registry,
             runs=completed_runs,
+        )
+
+    with tab_evaluation:
+        _render_evaluation_tab(
+            artifact_mgr=artifact_mgr,
+            registry=registry,
+            completed_runs=completed_runs,
         )
 
     with tab_registry:

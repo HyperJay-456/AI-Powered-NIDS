@@ -97,6 +97,21 @@ class DatasetEngineeringStatus:
 
 
 @dataclass(frozen=True)
+class ModelEvaluationStatus:
+    """Verifiable status of model evaluation laboratory runs."""
+
+    state: str  # "Not Started", "Active", "Completed", "Failed"
+    is_completed: bool
+    evaluation_run_count: int
+    latest_run_id: Optional[str]
+    has_validation_evaluation: bool
+    has_test_holdout_evaluation: bool
+    evaluated_algorithms: List[str]
+    summary_text: str
+    detail_text: str
+
+
+@dataclass(frozen=True)
 class PipelineStage:
     """Pipeline progression stage status."""
 
@@ -490,6 +505,80 @@ def check_dataset_engineering_status(
     )
 
 
+def check_model_evaluation_status(
+    evaluations_dir: Optional[Path] = None,
+    include_test_fixtures: bool = False,
+) -> ModelEvaluationStatus:
+    """Verify verifiable status of model evaluation laboratory runs.
+
+    Args:
+        evaluations_dir: Optional override path for evaluations storage.
+        include_test_fixtures: Whether to count automated test fixtures.
+
+    Returns:
+        ModelEvaluationStatus: Non-fabricated evaluation telemetry.
+    """
+    target_dir = evaluations_dir or settings.evaluations_dir
+    md_status = check_model_status()
+
+    if not target_dir.exists():
+        state = "Active" if md_status.trained_count > 0 else "Not Started"
+        return ModelEvaluationStatus(
+            state=state,
+            is_completed=False,
+            evaluation_run_count=0,
+            latest_run_id=None,
+            has_validation_evaluation=False,
+            has_test_holdout_evaluation=False,
+            evaluated_algorithms=[],
+            summary_text="Ready for Evaluation" if md_status.trained_count > 0 else "Awaiting Models",
+            detail_text=f"{md_status.trained_count} trained models available" if md_status.trained_count > 0 else "No trained models found",
+        )
+
+    from src.evaluation.evaluation_registry import EvaluationRegistry
+
+    reg = EvaluationRegistry(evaluations_dir=target_dir)
+    runs = reg.list_evaluation_runs(include_test_fixtures=include_test_fixtures)
+
+    if not runs:
+        state = "Active" if md_status.trained_count > 0 else "Not Started"
+        return ModelEvaluationStatus(
+            state=state,
+            is_completed=False,
+            evaluation_run_count=0,
+            latest_run_id=None,
+            has_validation_evaluation=False,
+            has_test_holdout_evaluation=False,
+            evaluated_algorithms=[],
+            summary_text="Ready for Evaluation" if md_status.trained_count > 0 else "Awaiting Models",
+            detail_text=f"{md_status.trained_count} trained models available" if md_status.trained_count > 0 else "No trained models found",
+        )
+
+    latest = runs[0]
+    parts = latest.get("partitions_evaluated", [])
+    has_val = "validation" in parts
+    has_test = "test" in parts
+    algos = latest.get("evaluated_algorithms", [])
+
+    detail_parts = []
+    if has_val:
+        detail_parts.append("Validation Evaluated")
+    if has_test:
+        detail_parts.append("Final Test Gated")
+
+    return ModelEvaluationStatus(
+        state="Completed",
+        is_completed=True,
+        evaluation_run_count=len(runs),
+        latest_run_id=latest.get("evaluation_run_id"),
+        has_validation_evaluation=has_val,
+        has_test_holdout_evaluation=has_test,
+        evaluated_algorithms=algos,
+        summary_text=f"{len(runs)} Evaluation Run{'s' if len(runs) > 1 else ''}",
+        detail_text=" • ".join(detail_parts) if detail_parts else "Evaluation complete",
+    )
+
+
 def get_detection_pipeline_stages() -> List[PipelineStage]:
     """Retrieve the formal detection pipeline stages with their verifiable implementation state."""
     ds_status = check_dataset_status()
@@ -578,6 +667,17 @@ def get_project_milestones() -> List[ProjectMilestone]:
         cp06_status = "Planned"
         cp06_variant = "neutral"
 
+    eval_status = check_model_evaluation_status()
+    if eval_status.is_completed:
+        cp07_status = "Completed"
+        cp07_variant = "success"
+    elif md_status.trained_count > 0:
+        cp07_status = "Active"
+        cp07_variant = "info"
+    else:
+        cp07_status = "Planned"
+        cp07_variant = "neutral"
+
     return [
         ProjectMilestone("CP-01", "Project Foundation", "Completed", "success", "Directory structure, settings, dependencies & Git baseline"),
         ProjectMilestone("CP-02", "UI Design System", "Completed", "success", "Cybersecurity SaaS tokens, component library & application shell"),
@@ -585,7 +685,7 @@ def get_project_milestones() -> List[ProjectMilestone]:
         ProjectMilestone("CP-04", "Traffic Upload & Data Explorer", "Completed", "success", "CSV flow uploader, schema validation & data distributions"),
         ProjectMilestone("CP-05", "Dataset Engineering", cp05_status, cp05_variant, "CIC-IDS-2017 cleaning, group-isolated splitting & dual scaling"),
         ProjectMilestone("CP-06", "ML Training Pipeline", cp06_status, cp06_variant, "Unified trainer for SVM, MLP, Decision Tree & serialization"),
-        ProjectMilestone("CP-07", "Model Evaluation Laboratory", "Planned", "neutral", "Cross-validation, confusion matrices, ROC-AUC & latency"),
+        ProjectMilestone("CP-07", "Model Evaluation Laboratory", cp07_status, cp07_variant, "Validation comparison, confusion matrices, ROC/PR curves & gated test holdout"),
         ProjectMilestone("CP-08", "Intrusion Detection Engine", "Planned", "neutral", "CSV-based intrusion detection engine & alert thresholding"),
         ProjectMilestone("CP-09", "Threat Intelligence & Prediction Explorer", "Planned", "neutral", "Attack taxonomy mapping, MITRE ATT&CK & explainability"),
         ProjectMilestone("CP-10", "Reports & Exports", "Planned", "neutral", "Executive threat reports & forensic CSV audit exports"),

@@ -19,6 +19,7 @@ PROCESSED_DATA_DIR: Path = DATA_DIR / "processed"
 METADATA_DIR: Path = DATA_DIR / "metadata"
 MODELS_DIR: Path = BASE_DIR / "models"
 SAVED_MODELS_DIR: Path = MODELS_DIR / "saved"
+EVALUATIONS_DIR: Path = MODELS_DIR / "evaluations"
 LOGS_DIR: Path = BASE_DIR / "logs"
 SRC_DIR: Path = BASE_DIR / "src"
 
@@ -137,13 +138,20 @@ class EvaluationConfig:
 
     metrics: Tuple[str, ...] = (
         "Accuracy",
+        "Balanced Accuracy",
+        "Precision (Macro)",
+        "Recall (Macro)",
+        "F1-Score (Macro)",
         "Precision (Weighted)",
         "Recall (Weighted)",
         "F1-Score (Weighted)",
+        "MCC",
+        "Cohen's Kappa",
         "ROC-AUC (One-vs-Rest)",
         "Inference Latency (ms)",
     )
     cross_validation_folds: int = 5
+    default_batch_size: int = 10_000
 
 
 # ==============================================================================
@@ -225,6 +233,7 @@ class AppConfig:
     metadata_dir: Path = METADATA_DIR
     models_dir: Path = MODELS_DIR
     saved_models_dir: Path = SAVED_MODELS_DIR
+    evaluations_dir: Path = EVALUATIONS_DIR
     logs_dir: Path = LOGS_DIR
     src_dir: Path = SRC_DIR
 
@@ -242,6 +251,7 @@ class AppConfig:
             self.processed_data_dir,
             self.metadata_dir,
             self.saved_models_dir,
+            self.evaluations_dir,
             self.logs_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
