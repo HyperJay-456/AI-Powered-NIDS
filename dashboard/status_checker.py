@@ -246,6 +246,7 @@ def check_model_status(models_dir: Optional[Path] = None) -> ModelSystemStatus:
         found_path: Optional[str] = None
 
         if target_dir.exists():
+            # Check direct root-level candidate filenames
             for fname in meta["filenames"]:
                 candidate = target_dir / fname
                 if candidate.exists() and candidate.is_file() and candidate.stat().st_size > 0:
@@ -253,6 +254,24 @@ def check_model_status(models_dir: Optional[Path] = None) -> ModelSystemStatus:
                     found_path = str(candidate.name)
                     trained_count += 1
                     break
+
+            # If not found at root, check CP-06 run directories (models/saved/train_run_*/<key>/model.joblib)
+            if not is_trained:
+                try:
+                    run_dirs = sorted(
+                        [d for d in target_dir.glob("train_run_*") if d.is_dir()],
+                        key=lambda p: p.stat().st_mtime,
+                        reverse=True,
+                    )
+                    for rdir in run_dirs:
+                        candidate = rdir / key / "model.joblib"
+                        if candidate.exists() and candidate.is_file() and candidate.stat().st_size > 0:
+                            is_trained = True
+                            found_path = f"{rdir.name}/{key}/model.joblib"
+                            trained_count += 1
+                            break
+                except Exception:
+                    pass
 
         status_lbl = "Trained & Ready" if is_trained else "No Trained Models"
 
@@ -524,13 +543,24 @@ def get_project_milestones() -> List[ProjectMilestone]:
     cp05_status = "Completed" if eng_status.is_completed else "Active"
     cp05_variant = "success" if eng_status.is_completed else "info"
 
+    md_status = check_model_status()
+    if md_status.trained_count == md_status.total_models:
+        cp06_status = "Completed"
+        cp06_variant = "success"
+    elif md_status.trained_count > 0:
+        cp06_status = "Active"
+        cp06_variant = "info"
+    else:
+        cp06_status = "Planned"
+        cp06_variant = "neutral"
+
     return [
         ProjectMilestone("CP-01", "Project Foundation", "Completed", "success", "Directory structure, settings, dependencies & Git baseline"),
         ProjectMilestone("CP-02", "UI Design System", "Completed", "success", "Cybersecurity SaaS tokens, component library & application shell"),
         ProjectMilestone("CP-03", "Application Dashboard", "Completed", "success", "Verifiable executive overview dashboard & status telemetry"),
         ProjectMilestone("CP-04", "Traffic Upload & Data Explorer", "Completed", "success", "CSV flow uploader, schema validation & data distributions"),
         ProjectMilestone("CP-05", "Dataset Engineering", cp05_status, cp05_variant, "CIC-IDS-2017 cleaning, group-isolated splitting & dual scaling"),
-        ProjectMilestone("CP-06", "ML Training Pipeline", "Planned", "neutral", "Unified trainer for SVM, MLP, Decision Tree & serialization"),
+        ProjectMilestone("CP-06", "ML Training Pipeline", cp06_status, cp06_variant, "Unified trainer for SVM, MLP, Decision Tree & serialization"),
         ProjectMilestone("CP-07", "Model Evaluation Laboratory", "Planned", "neutral", "Cross-validation, confusion matrices, ROC-AUC & latency"),
         ProjectMilestone("CP-08", "Intrusion Detection Engine", "Planned", "neutral", "CSV-based intrusion detection engine & alert thresholding"),
         ProjectMilestone("CP-09", "Threat Intelligence & Prediction Explorer", "Planned", "neutral", "Attack taxonomy mapping, MITRE ATT&CK & explainability"),
