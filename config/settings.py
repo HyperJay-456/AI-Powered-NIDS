@@ -164,6 +164,39 @@ class IngestionConfig:
 
 
 # ==============================================================================
+# Preprocessing & Dataset Engineering Configurations (CP-05)
+# ==============================================================================
+@dataclass(frozen=True)
+class PreprocessingConfig:
+    """Configuration for dataset engineering, splitting, scaling, and encoding."""
+
+    train_ratio: float = 0.70
+    validation_ratio: float = 0.15
+    test_ratio: float = 0.15
+    random_seed: int = 42
+    default_chunk_size: int = 50_000
+    numeric_imputer_strategy: str = "median"  # Median imputation on training split
+    categorical_imputer_strategy: str = "most_frequent"
+    scaler_strategy: str = "standard"  # Standard scaling for SVM & MLP
+    tree_scaler_strategy: str = "none"  # Unscaled for Decision Tree
+    duplicate_policy: str = "group_isolated"  # Prevent identical records from crossing partition boundaries
+    target_column: str = "Label"
+    identifier_keywords: Tuple[str, ...] = (
+        "flow_id",
+        "flow id",
+        "source_ip",
+        "source ip",
+        "destination_ip",
+        "destination ip",
+        "src_ip",
+        "dst_ip",
+        "timestamp",
+        "external_ip",
+    )
+    sparse_output: bool = True
+
+
+# ==============================================================================
 # Streamlit Application Presentation Settings
 # ==============================================================================
 @dataclass(frozen=True)
@@ -197,6 +230,7 @@ class AppConfig:
 
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     ingestion: IngestionConfig = field(default_factory=IngestionConfig)
+    preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
     models: ModelHyperparameters = field(default_factory=ModelHyperparameters)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     ui: StreamlitConfig = field(default_factory=StreamlitConfig)

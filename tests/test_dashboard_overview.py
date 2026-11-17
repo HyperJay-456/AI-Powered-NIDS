@@ -68,9 +68,11 @@ class TestDashboardOverview(unittest.TestCase):
         status_by_code = {m.code: m.status for m in milestones}
         self.assertEqual(status_by_code["CP-01"], "Completed")
         self.assertEqual(status_by_code["CP-02"], "Completed")
-        self.assertEqual(status_by_code["CP-03"], "Active")
+        self.assertEqual(status_by_code["CP-03"], "Completed")
+        self.assertEqual(status_by_code["CP-04"], "Completed")
+        self.assertIn(status_by_code["CP-05"], ["Active", "Completed"])
 
-        for cp_num in range(4, 13):
+        for cp_num in range(6, 13):
             self.assertEqual(status_by_code[f"CP-{cp_num:02d}"], "Planned")
 
     def test_getting_started_csv_scope_and_prerequisites(self) -> None:

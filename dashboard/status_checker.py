@@ -7,7 +7,7 @@ to provide verifiable operational telemetry without fabricated or synthetic data
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from config.settings import (
     ALGORITHM_KEYS,
@@ -73,6 +73,26 @@ class LatestAnalysisStatus:
     summary_text: str
     detail_text: str
     timestamp: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class DatasetEngineeringStatus:
+    """Verifiable status of dataset engineering and preprocessing runs."""
+
+    state: str  # "Not Started", "In Progress", "Completed", "Failed"
+    is_completed: bool
+    run_count: int
+    latest_run_id: Optional[str]
+    total_raw_rows: int
+    supervised_rows: int
+    train_rows: int
+    val_rows: int
+    test_rows: int
+    num_features_out: int
+    num_classes: int
+    classes: List[str]
+    summary_text: str
+    detail_text: str
 
 
 @dataclass(frozen=True)
@@ -311,39 +331,172 @@ def check_latest_analysis_status() -> LatestAnalysisStatus:
     )
 
 
+def check_dataset_engineering_status(
+    processed_dir: Optional[Path] = None,
+    session_state: Optional[Any] = None,
+) -> DatasetEngineeringStatus:
+    """Verify dataset engineering and preprocessing state from processed artifacts.
+
+    Args:
+        processed_dir: Optional override path for testing processed data storage.
+        session_state: Optional Streamlit session state object to check for active runs.
+
+    Returns:
+        DatasetEngineeringStatus: Verifiable engineering status without synthetic values.
+    """
+    target_dir = processed_dir or settings.processed_data_dir
+
+    # Check session state for in-progress or error execution
+    if session_state is not None:
+        get_fn = getattr(session_state, "get", None)
+        if callable(get_fn):
+            if get_fn("engineering_in_progress", False):
+                return DatasetEngineeringStatus(
+                    state="In Progress",
+                    is_completed=False,
+                    run_count=0,
+                    latest_run_id=None,
+                    total_raw_rows=0,
+                    supervised_rows=0,
+                    train_rows=0,
+                    val_rows=0,
+                    test_rows=0,
+                    num_features_out=0,
+                    num_classes=0,
+                    classes=[],
+                    summary_text="In Progress",
+                    detail_text="Pipeline execution actively running",
+                )
+            last_err = get_fn("engineering_last_error", None)
+            if last_err:
+                return DatasetEngineeringStatus(
+                    state="Failed",
+                    is_completed=False,
+                    run_count=0,
+                    latest_run_id=None,
+                    total_raw_rows=0,
+                    supervised_rows=0,
+                    train_rows=0,
+                    val_rows=0,
+                    test_rows=0,
+                    num_features_out=0,
+                    num_classes=0,
+                    classes=[],
+                    summary_text="Failed",
+                    detail_text=f"Error: {str(last_err)[:45]}...",
+                )
+
+    if not target_dir.exists():
+        return DatasetEngineeringStatus(
+            state="Not Started",
+            is_completed=False,
+            run_count=0,
+            latest_run_id=None,
+            total_raw_rows=0,
+            supervised_rows=0,
+            train_rows=0,
+            val_rows=0,
+            test_rows=0,
+            num_features_out=0,
+            num_classes=0,
+            classes=[],
+            summary_text="Not Started",
+            detail_text="No prepared datasets in data/processed/",
+        )
+
+    # Inspect completed runs
+    from src.data.engineering.artifact_manager import ArtifactManager
+
+    mgr = ArtifactManager(processed_dir=target_dir)
+    runs = mgr.list_runs()
+
+    if not runs:
+        return DatasetEngineeringStatus(
+            state="Not Started",
+            is_completed=False,
+            run_count=0,
+            latest_run_id=None,
+            total_raw_rows=0,
+            supervised_rows=0,
+            train_rows=0,
+            val_rows=0,
+            test_rows=0,
+            num_features_out=0,
+            num_classes=0,
+            classes=[],
+            summary_text="Not Started",
+            detail_text="No prepared datasets in data/processed/",
+        )
+
+    latest = runs[0]
+    return DatasetEngineeringStatus(
+        state="Completed",
+        is_completed=True,
+        run_count=len(runs),
+        latest_run_id=latest.run_id,
+        total_raw_rows=latest.total_raw_rows,
+        supervised_rows=latest.supervised_rows,
+        train_rows=latest.train_rows,
+        val_rows=latest.val_rows,
+        test_rows=latest.test_rows,
+        num_features_out=latest.num_features_out,
+        num_classes=latest.num_classes,
+        classes=latest.classes,
+        summary_text=f"{len(runs)} Prepared Run{'s' if len(runs) > 1 else ''}",
+        detail_text=f"{latest.train_rows:,} train / {latest.val_rows:,} val / {latest.test_rows:,} test",
+    )
+
+
 def get_detection_pipeline_stages() -> List[PipelineStage]:
     """Retrieve the formal detection pipeline stages with their verifiable implementation state."""
+    ds_status = check_dataset_status()
+    eng_status = check_dataset_engineering_status()
+    md_status = check_model_status()
+
+    # Dynamic status evaluation
+    stage1_status = "Completed" if ds_status.validated_count > 0 else ("Active" if ds_status.is_loaded else "Pending")
+    stage1_variant = "success" if stage1_status == "Completed" else ("info" if stage1_status == "Active" else "neutral")
+
+    stage2_status = "Completed" if eng_status.is_completed else ("Active" if eng_status.state == "In Progress" else "Pending")
+    stage2_variant = "success" if stage2_status == "Completed" else ("info" if stage2_status == "Active" else "neutral")
+
+    stage3_status = stage2_status
+    stage3_variant = stage2_variant
+
+    stage4_status = "Completed" if md_status.trained_count == md_status.total_models else ("Active" if md_status.trained_count > 0 else "Pending")
+    stage4_variant = "success" if stage4_status == "Completed" else ("info" if stage4_status == "Active" else "neutral")
+
     return [
         PipelineStage(
             stage_id="traffic_input",
             title="1. CSV Traffic Input",
             description="Network flow telemetry upload & schema validation",
-            status="Pending",
-            badge_variant="neutral",
+            status=stage1_status,
+            badge_variant=stage1_variant,
             target_checkpoint="CP-04",
         ),
         PipelineStage(
             stage_id="preprocessing",
             title="2. Data Preprocessing",
             description="Header normalization, infinity & missing value remediation",
-            status="Pending",
-            badge_variant="neutral",
+            status=stage2_status,
+            badge_variant=stage2_variant,
             target_checkpoint="CP-05",
         ),
         PipelineStage(
             stage_id="feature_engineering",
             title="3. Feature Engineering",
             description="Robust feature scaling & attack category label encoding",
-            status="Pending",
-            badge_variant="neutral",
+            status=stage3_status,
+            badge_variant=stage3_variant,
             target_checkpoint="CP-05",
         ),
         PipelineStage(
             stage_id="ml_classification",
             title="4. ML Classification",
             description="Inference across SVM, MLP, and Decision Tree estimators",
-            status="Pending",
-            badge_variant="neutral",
+            status=stage4_status,
+            badge_variant=stage4_variant,
             target_checkpoint="CP-06",
         ),
         PipelineStage(
@@ -367,12 +520,16 @@ def get_detection_pipeline_stages() -> List[PipelineStage]:
 
 def get_project_milestones() -> List[ProjectMilestone]:
     """Retrieve the complete 12-checkpoint milestone progression."""
+    eng_status = check_dataset_engineering_status()
+    cp05_status = "Completed" if eng_status.is_completed else "Active"
+    cp05_variant = "success" if eng_status.is_completed else "info"
+
     return [
         ProjectMilestone("CP-01", "Project Foundation", "Completed", "success", "Directory structure, settings, dependencies & Git baseline"),
         ProjectMilestone("CP-02", "UI Design System", "Completed", "success", "Cybersecurity SaaS tokens, component library & application shell"),
-        ProjectMilestone("CP-03", "Application Dashboard", "Active", "info", "Verifiable executive overview dashboard & status telemetry"),
-        ProjectMilestone("CP-04", "Traffic Upload & Data Explorer", "Planned", "neutral", "CSV flow uploader, schema validation & data distributions"),
-        ProjectMilestone("CP-05", "Dataset Engineering", "Planned", "neutral", "CIC-IDS-2017 cleaning, infinity handling & robust scaling"),
+        ProjectMilestone("CP-03", "Application Dashboard", "Completed", "success", "Verifiable executive overview dashboard & status telemetry"),
+        ProjectMilestone("CP-04", "Traffic Upload & Data Explorer", "Completed", "success", "CSV flow uploader, schema validation & data distributions"),
+        ProjectMilestone("CP-05", "Dataset Engineering", cp05_status, cp05_variant, "CIC-IDS-2017 cleaning, group-isolated splitting & dual scaling"),
         ProjectMilestone("CP-06", "ML Training Pipeline", "Planned", "neutral", "Unified trainer for SVM, MLP, Decision Tree & serialization"),
         ProjectMilestone("CP-07", "Model Evaluation Laboratory", "Planned", "neutral", "Cross-validation, confusion matrices, ROC-AUC & latency"),
         ProjectMilestone("CP-08", "Intrusion Detection Engine", "Planned", "neutral", "CSV-based intrusion detection engine & alert thresholding"),

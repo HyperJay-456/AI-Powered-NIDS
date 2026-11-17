@@ -10,8 +10,10 @@ from dashboard.components.cards import metric_card
 from dashboard.components.headers import page_header, section_header
 from dashboard.components.panels import info_panel
 from dashboard.status_checker import (
+    DatasetEngineeringStatus,
     DatasetStatus,
     ModelSystemStatus,
+    check_dataset_engineering_status,
     check_dataset_status,
     check_latest_analysis_status,
     check_model_status,
@@ -23,6 +25,8 @@ from dashboard.status_checker import (
 
 def _render_header() -> None:
     """Render Section A: Dashboard Header."""
+    eng_status = check_dataset_engineering_status(session_state=st.session_state)
+    cp_badge = ("CP-05 Completed", "success") if eng_status.is_completed else ("CP-05 Active", "info")
     page_header(
         title="Network Security Overview",
         subtitle=(
@@ -32,7 +36,7 @@ def _render_header() -> None:
         icon="🛡️",
         badges=[
             ("Mode: Local / Offline", "neutral"),
-            ("CP-03 Active", "info"),
+            cp_badge,
         ],
     )
 
@@ -74,14 +78,17 @@ def _render_executive_summary_cards(
             status_color="var(--color-text-secondary)",
         )
 
-    # 4. Latest Analysis
+    # 4. Dataset Engineering Status (CP-05)
     with col4:
-        latest_status = check_latest_analysis_status()
+        eng_status = check_dataset_engineering_status(session_state=st.session_state)
+        status_color = "var(--color-status-success)" if eng_status.is_completed else (
+            "var(--color-status-warning)" if eng_status.state == "Failed" else "var(--color-text-secondary)"
+        )
         metric_card(
-            label="Latest Analysis",
-            value=latest_status.summary_text,
-            subtitle=latest_status.detail_text,
-            status_color="var(--color-text-secondary)",
+            label="Dataset Engineering",
+            value=eng_status.summary_text,
+            subtitle=eng_status.detail_text,
+            status_color=status_color,
         )
 
 
@@ -343,11 +350,73 @@ def _render_getting_started_section() -> None:
     st.markdown('</div>', unsafe_allow_html=True)
 
 
+def _render_preprocessed_datasets_section(eng_status: DatasetEngineeringStatus) -> None:
+    """Render Section H: Preprocessed Dataset Pipeline & Engineering State (CP-05)."""
+    section_header(
+        title="Preprocessed Datasets & ML Partitions",
+        description="Verifiable state of model-ready partitions and preprocessors in data/processed/:",
+    )
+
+    if eng_status.is_completed:
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            metric_card(
+                label="Prepared Runs",
+                value=f"{eng_status.run_count} Run{'s' if eng_status.run_count != 1 else ''}",
+                subtitle=f"ID: {eng_status.latest_run_id[:16]}...",
+                status_color="var(--color-status-success)",
+            )
+        with c2:
+            metric_card(
+                label="Supervised Samples",
+                value=f"{eng_status.supervised_rows:,}",
+                subtitle=f"{eng_status.train_rows:,} Tr / {eng_status.val_rows:,} Val / {eng_status.test_rows:,} Te",
+                status_color="var(--color-accent-primary)",
+            )
+        with c3:
+            metric_card(
+                label="Target Dimensions",
+                value=f"{eng_status.supervised_rows:,} × {eng_status.num_features_out}",
+                subtitle="Dual scaled & encoded",
+                status_color="var(--color-accent-primary)",
+            )
+        with c4:
+            classes_preview = ", ".join(eng_status.classes[:2]) + ("..." if len(eng_status.classes) > 2 else "")
+            metric_card(
+                label="Identified Classes",
+                value=f"{eng_status.num_classes} Classes",
+                subtitle=classes_preview,
+                status_color="var(--color-status-success)",
+            )
+    else:
+        status_msg = (
+            "No preprocessed dataset artifacts are currently available in 'data/processed/'. "
+            "Execute the dataset engineering pipeline in Traffic Analysis to partition, clean, and dual-scale flow datasets for ML training."
+            if eng_status.state == "Not Started" else
+            ("The dataset engineering pipeline is currently running..." if eng_status.state == "In Progress" else f"Last engineering run failed: {eng_status.detail_text}")
+        )
+        info_panel(
+            title=f"Dataset Engineering Status: {eng_status.state}",
+            message=status_msg,
+            icon="⚙️",
+        )
+
+    col_btn, _ = st.columns([1, 2])
+    with col_btn:
+        if st.button("Open Dataset Engineering Pipeline ⚙️", key="btn_nav_preprocessing"):
+            from dashboard.navigation import set_active_route
+
+            st.session_state["traffic_analysis_tab_index"] = 1
+            set_active_route("traffic_analysis")
+            st.rerun()
+
+
 def render() -> None:
     """Render the master Overview Dashboard viewport."""
     # 1. Fetch verifiable system state
     dataset_status = check_dataset_status()
     model_status = check_model_status()
+    eng_status = check_dataset_engineering_status(session_state=st.session_state)
 
     # 2. Section A: Dashboard Header
     _render_header()
@@ -358,14 +427,17 @@ def render() -> None:
     # 4. Section C: Dataset Readiness Section
     _render_dataset_readiness_section(dataset_status)
 
-    # 5. Section D: Machine Learning Model Overview
+    # 5. Section D: Preprocessed Datasets & ML Partitions (CP-05)
+    _render_preprocessed_datasets_section(eng_status)
+
+    # 6. Section E: Machine Learning Model Overview
     _render_ml_model_overview_section(model_status)
 
-    # 6. Section E: Detection Pipeline Overview
+    # 7. Section F: Detection Pipeline Overview
     _render_detection_pipeline_section()
 
-    # 7. Section F: Project Progress Section
+    # 8. Section G: Project Progress Section
     _render_project_progress_section()
 
-    # 8. Section G: Getting Started Section
+    # 9. Section H: Getting Started Section
     _render_getting_started_section()

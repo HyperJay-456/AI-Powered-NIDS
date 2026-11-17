@@ -98,17 +98,19 @@ class TestStatusChecker(unittest.TestCase):
         for s in stages:
             self.assertEqual(s.status, "Pending")
 
-    def test_project_milestones_count_and_current_cp03(self) -> None:
-        """Verify exactly 12 milestones with CP-01/02 Completed, CP-03 Active, rest Planned."""
+    def test_project_milestones_count_and_current_progression(self) -> None:
+        """Verify exactly 12 milestones with CP-01 through CP-04 Completed, CP-05 Active/Completed, rest Planned."""
         milestones = get_project_milestones()
         self.assertEqual(len(milestones), 12)
         milestone_dict = {m.code: m for m in milestones}
 
         self.assertEqual(milestone_dict["CP-01"].status, "Completed")
         self.assertEqual(milestone_dict["CP-02"].status, "Completed")
-        self.assertEqual(milestone_dict["CP-03"].status, "Active")
+        self.assertEqual(milestone_dict["CP-03"].status, "Completed")
+        self.assertEqual(milestone_dict["CP-04"].status, "Completed")
+        self.assertIn(milestone_dict["CP-05"].status, ["Active", "Completed"])
 
-        for i in range(4, 13):
+        for i in range(6, 13):
             code = f"CP-{i:02d}"
             self.assertEqual(milestone_dict[code].status, "Planned")
 

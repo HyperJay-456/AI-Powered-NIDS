@@ -26,11 +26,11 @@ class ColumnMetadata:
     name: str
     normalized_name: str
     dtype: str
-    non_null_count: int
-    missing_count: int
-    missing_percentage: float
-    unique_count: Optional[int]
-    classification: str  # 'Numeric', 'Categorical', 'Label', 'Mixed'
+    non_null_count: int = 0
+    missing_count: int = 0
+    missing_percentage: float = 0.0
+    unique_count: Optional[int] = None
+    classification: str = "Numeric"  # 'Numeric', 'Categorical', 'Label', 'Mixed'
     numeric_anomalies: int = 0
 
 
@@ -64,6 +64,21 @@ class DatasetRecord:
     duplicate_detection_complete: bool = True
     duplicate_detection_notes: str = ""
 
+    @property
+    def filename(self) -> str:
+        """Alias for safe_filename."""
+        return self.safe_filename
+
+    @property
+    def row_count(self) -> int:
+        """Alias for valid_rows."""
+        return self.valid_rows
+
+    @property
+    def column_count(self) -> int:
+        """Alias for total_columns."""
+        return self.total_columns
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert record to JSON-serializable dictionary."""
         data = asdict(self)
@@ -72,13 +87,42 @@ class DatasetRecord:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DatasetRecord":
         """Reconstruct DatasetRecord from dictionary representation."""
+        from dataclasses import fields
+
         cols_raw = data.get("columns", [])
         columns = [
             ColumnMetadata(**c) if isinstance(c, dict) else c for c in cols_raw
         ]
         data_clean = dict(data)
         data_clean["columns"] = columns
-        return cls(**data_clean)
+
+        # Map common aliases if missing
+        if "dataset_id" not in data_clean:
+            data_clean["dataset_id"] = data_clean.get("id") or Path(data_clean.get("filename", "unknown.csv")).stem
+        if "original_filename" not in data_clean:
+            data_clean["original_filename"] = data_clean.get("filename", data_clean["dataset_id"] + ".csv")
+        if "safe_filename" not in data_clean:
+            data_clean["safe_filename"] = data_clean["original_filename"]
+        if "file_path" not in data_clean:
+            data_clean["file_path"] = f"data/raw/{data_clean['safe_filename']}"
+        if "file_size_formatted" not in data_clean:
+            size_bytes = data_clean.get("file_size_bytes", 0)
+            data_clean["file_size_formatted"] = f"{size_bytes / (1024*1024):.2f} MB" if size_bytes else "0 MB"
+        if "import_timestamp" not in data_clean:
+            data_clean["import_timestamp"] = data_clean.get("imported_at_utc", "2026-11-17T00:00:00Z")
+        if "valid_rows" not in data_clean:
+            data_clean["valid_rows"] = data_clean.get("total_rows", 0)
+        if "total_columns" not in data_clean:
+            data_clean["total_columns"] = data_clean.get("column_count", len(columns))
+        if "has_ground_truth_label" not in data_clean:
+            has_lbl = any(c.normalized_name == "label" for c in columns) if columns else True
+            data_clean["has_ground_truth_label"] = has_lbl
+            if has_lbl and "label_column_name" not in data_clean:
+                data_clean["label_column_name"] = "Label"
+
+        valid_fields = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in data_clean.items() if k in valid_fields}
+        return cls(**filtered)
 
 
 class IngestionManifest:
