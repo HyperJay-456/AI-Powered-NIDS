@@ -21,6 +21,7 @@ from src.evaluation.evaluation_manifest import (
     ROCMetricRecord,
     SecurityMetricRecord,
     capture_evaluation_environment,
+    compute_candidate_set_hash,
 )
 from src.evaluation.evaluation_orchestrator import EvaluationOrchestrator
 from src.evaluation.evaluation_registry import EvaluationRegistry
@@ -48,6 +49,7 @@ __all__ = [
     "ROCMetricRecord",
     "SecurityMetricRecord",
     "capture_evaluation_environment",
+    "compute_candidate_set_hash",
     "EvaluationOrchestrator",
     "EvaluationRegistry",
     "BatchInferenceResult",

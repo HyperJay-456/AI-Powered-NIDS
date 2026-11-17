@@ -35,6 +35,7 @@ from src.evaluation.evaluation_manifest import (
     CandidateModelFreezeRecord,
     EvaluationRunManifest,
     capture_evaluation_environment,
+    compute_candidate_set_hash,
 )
 from src.evaluation.evaluation_registry import EvaluationRegistry
 from src.evaluation.inference_runner import InferenceRunner
@@ -301,6 +302,13 @@ class EvaluationOrchestrator:
         if not manifest:
             raise FileNotFoundError(f"Evaluation manifest '{evaluation_run_id}' not found.")
 
+        # GOVERNANCE CHECK 1: Prevent changing candidate set after test evaluation has occurred
+        if manifest.test_holdout_locked or manifest.test_gate_confirmed or manifest.test_results:
+            raise PermissionError(
+                f"GOVERNANCE VIOLATION: Candidate models for evaluation run '{evaluation_run_id}' "
+                "cannot be modified or re-frozen because final test holdout evaluation has already been executed."
+            )
+
         if not manifest.validation_results:
             raise ValueError("Cannot freeze candidates: No validation evaluation results present.")
 
@@ -317,6 +325,15 @@ class EvaluationOrchestrator:
         for algo_key, res in manifest.validation_results.items():
             is_primary = (algo_key == primary_algo)
             sec = res.security_metrics
+
+            # Re-verify current model on disk to capture artifact path and verify current checksum
+            check = self.verifier.verify_model_eligibility(
+                training_run_id=res.training_run_id,
+                algorithm=algo_key,
+                allow_test_fixtures=manifest.is_test_fixture,
+            )
+            artifact_path = check.artifact_path if check else None
+
             frozen_candidates[algo_key] = CandidateModelFreezeRecord(
                 algorithm=algo_key,
                 algorithm_display_name=res.algorithm_display_name,
@@ -328,11 +345,14 @@ class EvaluationOrchestrator:
                 validation_macro_f1=res.aggregate_metrics.macro_f1,
                 validation_accuracy=res.aggregate_metrics.accuracy,
                 validation_far=sec.benign_false_alarm_rate if sec.is_available else None,
+                artifact_path=artifact_path,
             )
 
         manifest.frozen_candidates = frozen_candidates
+        manifest.candidate_set_hash = compute_candidate_set_hash(frozen_candidates)
         manifest.notes.append(
-            f"Candidate models frozen at {frozen_time}. Primary candidate designated: '{primary_algo.upper()}'."
+            f"Candidate models frozen at {frozen_time}. Primary candidate designated: '{primary_algo.upper()}'. "
+            f"Candidate set hash: {manifest.candidate_set_hash[:16]}..."
         )
 
         self.eval_registry.save_evaluation_run(manifest)
@@ -372,11 +392,41 @@ class EvaluationOrchestrator:
         if not manifest:
             raise FileNotFoundError(f"Evaluation manifest '{evaluation_run_id}' not found.")
 
+        # GOVERNANCE CHECK 1: Disallow re-running test evaluation on this evaluation run
+        if manifest.test_holdout_locked or manifest.test_gate_confirmed or manifest.test_results:
+            raise PermissionError(
+                f"TEST HOLDOUT LOCKED: The final test holdout partition has already been evaluated for "
+                f"run '{evaluation_run_id}' (locked at {manifest.test_holdout_locked_at_utc or manifest.test_gate_confirmed_at_utc or 'earlier'}). "
+                "Test results are immutable and cannot be rerun."
+            )
+
+        # GOVERNANCE CHECK 2: Require complete candidate set frozen before test access
         if not manifest.frozen_candidates:
             raise PermissionError(
                 "Evaluation protocol violation: Candidate models must be selected and frozen "
                 "based on validation results before executing final test holdout evaluation."
             )
+
+        # GOVERNANCE CHECK 3: Persistent engineering run lock (prevent candidate alteration & snooping)
+        existing_lock = self.eval_registry.get_test_lock(manifest.engineering_run_id)
+        if existing_lock:
+            locked_eval_id = existing_lock.get("evaluation_run_id")
+            locked_hash = existing_lock.get("candidate_set_hash")
+            curr_hash = manifest.candidate_set_hash or compute_candidate_set_hash(manifest.frozen_candidates)
+
+            if locked_eval_id != evaluation_run_id or locked_hash != curr_hash:
+                raise PermissionError(
+                    f"TEST HOLDOUT GOVERNANCE VIOLATION: The final test holdout partition for engineering run "
+                    f"'{manifest.engineering_run_id}' is permanently locked by evaluation run '{locked_eval_id}'. "
+                    "Changing the candidate set or rerunning the test partition on the same engineering split "
+                    "is strictly prohibited to prevent data snooping and model selection based on test performance."
+                )
+            else:
+                raise PermissionError(
+                    f"TEST HOLDOUT LOCKED: The final test holdout partition for engineering run "
+                    f"'{manifest.engineering_run_id}' has already been evaluated in run '{locked_eval_id}'. "
+                    "The test partition is an immutable one-time holdout."
+                )
 
         eng_run_id = manifest.engineering_run_id
         training_run_id = manifest.training_session_id or ""
@@ -403,7 +453,7 @@ class EvaluationOrchestrator:
             )
             if not check.is_eligible:
                 raise ValueError(
-                    f"Model '{algo_key}' failed eligibility check: {check.rejection_reasons}"
+                    f"CRITICAL CHECKSUM MISMATCH: Model '{algo_key}' failed eligibility check: {check.rejection_reasons}"
                 )
 
             if check.model_sha256 != freeze_rec.model_checksum:
@@ -511,13 +561,28 @@ class EvaluationOrchestrator:
         confirm_time = datetime.now(timezone.utc).isoformat()
         manifest.test_gate_confirmed = True
         manifest.test_gate_confirmed_at_utc = confirm_time
+        manifest.test_holdout_locked = True
+        manifest.test_holdout_locked_at_utc = confirm_time
+        manifest.candidate_set_hash = manifest.candidate_set_hash or compute_candidate_set_hash(manifest.frozen_candidates)
         manifest.test_gate_confirmation_notes = notes
         manifest.test_results = test_results
         if "test" not in manifest.partitions_evaluated:
             manifest.partitions_evaluated.append("test")
 
         manifest.notes.append(
-            f"Final test holdout evaluation executed at {confirm_time} across {len(test_results)} frozen models."
+            f"Final test holdout evaluation executed at {confirm_time} across {len(test_results)} frozen models. "
+            "Test holdout locked permanently."
+        )
+
+        # Persist test holdout lock in registry
+        primary_cand = next((k for k, v in manifest.frozen_candidates.items() if v.selected_as_primary), "unknown")
+        self.eval_registry.acquire_test_lock(
+            engineering_run_id=manifest.engineering_run_id,
+            evaluation_run_id=manifest.evaluation_run_id,
+            candidate_checksums={k: v.model_checksum for k, v in manifest.frozen_candidates.items()},
+            primary_candidate=primary_cand,
+            candidate_set_hash=manifest.candidate_set_hash,
+            is_test_fixture=manifest.is_test_fixture,
         )
 
         self.eval_registry.save_evaluation_run(manifest)

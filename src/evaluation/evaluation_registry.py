@@ -230,3 +230,90 @@ class EvaluationRegistry:
         except Exception as e:
             logger.error(f"Failed to load evaluation manifest for '{evaluation_run_id}': {e}")
             return None
+
+    # Persistent Test Holdout Locks
+    LOCK_FILE_NAME: str = "test_holdout_locks.json"
+
+    def _get_locks_file_path(self) -> Path:
+        return self.eval_dir / self.LOCK_FILE_NAME
+
+    def get_test_lock(self, engineering_run_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve persistent test holdout lock for a CP-05 engineering run if one exists."""
+        locks_file = self._get_locks_file_path()
+        if locks_file.exists():
+            try:
+                with open(locks_file, "r", encoding="utf-8") as f:
+                    locks_data = json.load(f)
+                if engineering_run_id in locks_data:
+                    return locks_data[engineering_run_id]
+            except Exception as e:
+                logger.debug(f"Failed to read test holdout locks file: {e}")
+
+        # Fallback inspection: scan existing evaluation manifests for this engineering run
+        for run_dir in self.eval_dir.glob("eval_run_*"):
+            if not run_dir.is_dir():
+                continue
+            manifest_file = run_dir / "evaluation_manifest.json"
+            if not manifest_file.exists():
+                continue
+            try:
+                with open(manifest_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if data.get("engineering_run_id") == engineering_run_id:
+                    if data.get("test_holdout_locked") or data.get("test_gate_confirmed") or "test" in data.get("partitions_evaluated", []):
+                        return {
+                            "engineering_run_id": engineering_run_id,
+                            "evaluation_run_id": data.get("evaluation_run_id", run_dir.name),
+                            "locked_at_utc": data.get("test_holdout_locked_at_utc") or data.get("test_gate_confirmed_at_utc") or data.get("completed_at_utc"),
+                            "candidate_set_hash": data.get("candidate_set_hash"),
+                            "candidate_checksums": {k: v.get("model_checksum") for k, v in data.get("frozen_candidates", {}).items()},
+                            "primary_candidate": next((k for k, v in data.get("frozen_candidates", {}).items() if v.get("selected_as_primary")), "unknown"),
+                            "is_test_fixture": data.get("is_test_fixture", False),
+                        }
+            except Exception:
+                pass
+
+        return None
+
+    def acquire_test_lock(
+        self,
+        engineering_run_id: str,
+        evaluation_run_id: str,
+        candidate_checksums: Dict[str, str],
+        primary_candidate: str,
+        candidate_set_hash: str,
+        is_test_fixture: bool = False,
+    ) -> None:
+        """Atomically persist a test holdout lock for an engineering run."""
+        locks_file = self._get_locks_file_path()
+        locks_data: Dict[str, Any] = {}
+        if locks_file.exists():
+            try:
+                with open(locks_file, "r", encoding="utf-8") as f:
+                    locks_data = json.load(f)
+            except Exception:
+                locks_data = {}
+
+        existing = locks_data.get(engineering_run_id)
+        if existing and existing.get("evaluation_run_id") != evaluation_run_id:
+            raise PermissionError(
+                f"TEST HOLDOUT GOVERNANCE CONFLICT: Engineering run '{engineering_run_id}' "
+                f"is already locked by evaluation run '{existing.get('evaluation_run_id')}'."
+            )
+
+        locks_data[engineering_run_id] = {
+            "engineering_run_id": engineering_run_id,
+            "evaluation_run_id": evaluation_run_id,
+            "candidate_checksums": candidate_checksums,
+            "primary_candidate": primary_candidate,
+            "candidate_set_hash": candidate_set_hash,
+            "locked_at_utc": datetime.now(timezone.utc).isoformat(),
+            "is_test_fixture": is_test_fixture,
+        }
+
+        # Write atomically
+        temp_locks = self.eval_dir / f".tmp_{self.LOCK_FILE_NAME}"
+        with open(temp_locks, "w", encoding="utf-8") as f:
+            json.dump(locks_data, f, indent=2)
+        os.replace(temp_locks, locks_file)
+        logger.info(f"Persisted test holdout lock for '{engineering_run_id}' under evaluation run '{evaluation_run_id}'")

@@ -831,17 +831,19 @@ def _render_evaluation_tab(
     )
 
     is_frozen = bool(active_manifest.frozen_candidates)
+    test_completed = bool(active_manifest.test_results or active_manifest.test_holdout_locked)
 
     if is_frozen:
         primary_k = next((k for k, v in active_manifest.frozen_candidates.items() if v.selected_as_primary), "None")
         frozen_info = active_manifest.frozen_candidates.get(primary_k)
+        lock_badge = "Permanently Locked (Test Evaluated)" if test_completed else "Frozen (Awaiting Test Gate)"
         success_panel(
-            title="Candidate Models Frozen 🔒",
+            title=f"Candidate Models {lock_badge} 🔒",
             message=(
-                f"Candidate models were locked at {frozen_info.frozen_at_utc[:19] if frozen_info else 'N/A'} UTC. "
+                f"Candidate models locked at {frozen_info.frozen_at_utc[:19] if frozen_info else 'N/A'} UTC. "
                 f"Designated Primary Candidate: '{algo_display_map.get(primary_k, primary_k.upper())}'. "
                 f"Selection Criterion: {frozen_info.selection_criterion if frozen_info else 'Standard'}. "
-                "All model artifact checksums are locked."
+                "Candidate set and cryptographic checksums are immutable."
             ),
         )
     else:
@@ -898,7 +900,16 @@ def _render_evaluation_tab(
             icon="🔒",
         )
     else:
-        if not test_completed:
+        if test_completed:
+            success_panel(
+                title="Test Holdout Permanently Locked 🔒",
+                message=(
+                    f"Final test evaluation was executed and locked at "
+                    f"{active_manifest.test_holdout_locked_at_utc[:19] if active_manifest.test_holdout_locked_at_utc else 'N/A'} UTC. "
+                    "Results are immutable. Rerunning test evaluation or modifying candidate models on this engineering partition is locked."
+                ),
+            )
+        else:
             chk_confirm = st.checkbox(
                 "I confirm that candidate models are frozen, and test results will NOT be used for model tuning or selection.",
                 key="chk_test_gate_confirm",

@@ -238,10 +238,28 @@ class CandidateModelFreezeRecord:
     validation_macro_f1: Optional[float] = None
     validation_accuracy: Optional[float] = None
     validation_far: Optional[float] = None
+    artifact_path: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
+
+
+def compute_candidate_set_hash(
+    frozen_candidates: Dict[str, CandidateModelFreezeRecord],
+) -> str:
+    """Compute deterministic cryptographic hash of the complete candidate set.
+
+    Guarantees that any modification to candidate algorithms, checksums, primary designation,
+    or selection criterion produces a distinct hash.
+    """
+    items = []
+    for k in sorted(frozen_candidates.keys()):
+        rec = frozen_candidates[k]
+        items.append(f"{k}:{rec.model_checksum}:{rec.selected_as_primary}:{rec.selection_criterion}")
+    canonical_repr = "|".join(items)
+    import hashlib
+    return hashlib.sha256(canonical_repr.encode("utf-8")).hexdigest()
 
 
 @dataclass
@@ -263,6 +281,9 @@ class EvaluationRunManifest:
     test_gate_confirmed: bool = False
     test_gate_confirmed_at_utc: Optional[str] = None
     test_gate_confirmation_notes: Optional[str] = None
+    test_holdout_locked: bool = False
+    test_holdout_locked_at_utc: Optional[str] = None
+    candidate_set_hash: Optional[str] = None
     test_results: Dict[str, AlgorithmEvaluationResult] = field(default_factory=dict)
     environment: Dict[str, str] = field(default_factory=dict)
     is_test_fixture: bool = False
@@ -292,6 +313,9 @@ class EvaluationRunManifest:
             "test_gate_confirmed": self.test_gate_confirmed,
             "test_gate_confirmed_at_utc": self.test_gate_confirmed_at_utc,
             "test_gate_confirmation_notes": self.test_gate_confirmation_notes,
+            "test_holdout_locked": self.test_holdout_locked,
+            "test_holdout_locked_at_utc": self.test_holdout_locked_at_utc,
+            "candidate_set_hash": self.candidate_set_hash,
             "test_results": {
                 k: v.to_dict() if hasattr(v, "to_dict") else v
                 for k, v in self.test_results.items()

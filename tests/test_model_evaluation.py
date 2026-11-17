@@ -626,3 +626,200 @@ def test_resource_preflight_gating():
     assert preflight.batch_size > 0
     assert preflight.estimated_batch_memory_bytes > 0
     assert preflight.estimated_scores_memory_bytes > 0
+
+
+# ==============================================================================
+# CP-07 Governance & Test Holdout Audit Tests
+# ==============================================================================
+
+def test_audit_governance_repeated_test_evaluation_locked(mock_trained_models, mock_dataset_env):
+    """Audit 1: Prevent repeated test holdout evaluation attempts on the same run."""
+    orch = EvaluationOrchestrator(
+        saved_models_dir=mock_trained_models["saved_dir"],
+        processed_dir=mock_dataset_env["processed_dir"],
+        evaluations_dir=mock_trained_models["evaluations_dir"],
+    )
+
+    # Validation -> Freeze -> Gated Test
+    val_manifest = orch.run_validation_evaluation(
+        training_run_id=mock_trained_models["training_run_id"],
+        algorithms=["svm", "mlp", "decision_tree"],
+        allow_test_fixtures=False,
+    )
+    orch.freeze_candidate_models(
+        evaluation_run_id=val_manifest.evaluation_run_id,
+        primary_candidate_algo="mlp",
+    )
+    first_test_manifest = orch.run_gated_test_evaluation(
+        evaluation_run_id=val_manifest.evaluation_run_id,
+        confirmation_token="CONFIRM_TEST_EVALUATION",
+    )
+    assert first_test_manifest.test_holdout_locked is True
+    assert first_test_manifest.test_holdout_locked_at_utc is not None
+    assert first_test_manifest.candidate_set_hash is not None
+
+    # Immediate second attempt on the same evaluation run MUST FAIL with PermissionError
+    with pytest.raises(PermissionError) as exc_info:
+        orch.run_gated_test_evaluation(
+            evaluation_run_id=val_manifest.evaluation_run_id,
+            confirmation_token="CONFIRM_TEST_EVALUATION",
+        )
+    assert "TEST HOLDOUT LOCKED" in str(exc_info.value)
+
+
+def test_audit_governance_changing_candidate_set_after_test_rejected(mock_trained_models, mock_dataset_env):
+    """Audit 2: Prevent modifying candidate set once test evaluation has occurred."""
+    orch = EvaluationOrchestrator(
+        saved_models_dir=mock_trained_models["saved_dir"],
+        processed_dir=mock_dataset_env["processed_dir"],
+        evaluations_dir=mock_trained_models["evaluations_dir"],
+    )
+
+    val_manifest = orch.run_validation_evaluation(
+        training_run_id=mock_trained_models["training_run_id"],
+        algorithms=["svm", "mlp", "decision_tree"],
+        allow_test_fixtures=False,
+    )
+    orch.freeze_candidate_models(
+        evaluation_run_id=val_manifest.evaluation_run_id,
+        primary_candidate_algo="mlp",
+    )
+    orch.run_gated_test_evaluation(
+        evaluation_run_id=val_manifest.evaluation_run_id,
+        confirmation_token="CONFIRM_TEST_EVALUATION",
+    )
+
+    # Attempt to re-freeze candidate models with a different primary candidate MUST FAIL
+    with pytest.raises(PermissionError) as exc_info:
+        orch.freeze_candidate_models(
+            evaluation_run_id=val_manifest.evaluation_run_id,
+            primary_candidate_algo="svm",
+        )
+    assert "GOVERNANCE VIOLATION" in str(exc_info.value)
+    assert "cannot be modified or re-frozen" in str(exc_info.value)
+
+
+def test_audit_governance_different_candidate_set_on_locked_engineering_run_rejected(mock_trained_models, mock_dataset_env):
+    """Audit 3: Prevent changing candidate set and rerunning the test partition on same split."""
+    orch = EvaluationOrchestrator(
+        saved_models_dir=mock_trained_models["saved_dir"],
+        processed_dir=mock_dataset_env["processed_dir"],
+        evaluations_dir=mock_trained_models["evaluations_dir"],
+    )
+
+    # Session 1: Locks the engineering run test holdout
+    val1 = orch.run_validation_evaluation(
+        training_run_id=mock_trained_models["training_run_id"],
+        algorithms=["svm", "mlp", "decision_tree"],
+        allow_test_fixtures=False,
+    )
+    orch.freeze_candidate_models(val1.evaluation_run_id, primary_candidate_algo="mlp")
+    orch.run_gated_test_evaluation(val1.evaluation_run_id, confirmation_token="CONFIRM_TEST_EVALUATION")
+
+    # Session 2: Fresh evaluation run on the SAME engineering run with a DIFFERENT primary candidate
+    val2 = orch.run_validation_evaluation(
+        training_run_id=mock_trained_models["training_run_id"],
+        algorithms=["svm", "mlp", "decision_tree"],
+        allow_test_fixtures=False,
+    )
+    # Freeze with primary "decision_tree" instead of "mlp"
+    orch.freeze_candidate_models(val2.evaluation_run_id, primary_candidate_algo="decision_tree")
+
+    # Attempt to evaluate test partition with altered candidate selection MUST FAIL
+    with pytest.raises(PermissionError) as exc_info:
+        orch.run_gated_test_evaluation(val2.evaluation_run_id, confirmation_token="CONFIRM_TEST_EVALUATION")
+    assert "TEST HOLDOUT GOVERNANCE VIOLATION" in str(exc_info.value)
+    assert "Changing the candidate set or rerunning the test partition" in str(exc_info.value)
+
+
+def test_audit_governance_candidate_artifact_checksum_change_rejected(mock_trained_models, mock_dataset_env):
+    """Audit 4: Detect and reject candidate artifact tampering between freeze and test evaluation."""
+    orch = EvaluationOrchestrator(
+        saved_models_dir=mock_trained_models["saved_dir"],
+        processed_dir=mock_dataset_env["processed_dir"],
+        evaluations_dir=mock_trained_models["evaluations_dir"],
+    )
+
+    val = orch.run_validation_evaluation(
+        training_run_id=mock_trained_models["training_run_id"],
+        algorithms=["svm", "mlp", "decision_tree"],
+        allow_test_fixtures=False,
+    )
+    orch.freeze_candidate_models(val.evaluation_run_id, primary_candidate_algo="decision_tree")
+
+    # Tamper with the decision_tree model artifact on disk after freeze
+    dt_model_path = mock_trained_models["saved_dir"] / mock_trained_models["training_run_id"] / "decision_tree" / "model.joblib"
+    assert dt_model_path.exists()
+    with open(dt_model_path, "ab") as f:
+        f.write(b"\x00\x00CORRUPT_CHECKSUM_PAYLOAD")
+
+    # Gated test evaluation must detect mismatch and reject execution
+    with pytest.raises(ValueError) as exc_info:
+        orch.run_gated_test_evaluation(val.evaluation_run_id, confirmation_token="CONFIRM_TEST_EVALUATION")
+    assert "CRITICAL CHECKSUM MISMATCH" in str(exc_info.value)
+
+
+def test_audit_governance_persistent_lock_file_and_manifest_recovery(mock_trained_models, mock_dataset_env):
+    """Audit 5: Verify persistent lock file persistence and fallback recovery from manifests."""
+    orch = EvaluationOrchestrator(
+        saved_models_dir=mock_trained_models["saved_dir"],
+        processed_dir=mock_dataset_env["processed_dir"],
+        evaluations_dir=mock_trained_models["evaluations_dir"],
+    )
+
+    val = orch.run_validation_evaluation(
+        training_run_id=mock_trained_models["training_run_id"],
+        algorithms=["svm", "mlp"],
+        allow_test_fixtures=False,
+    )
+    orch.freeze_candidate_models(val.evaluation_run_id, primary_candidate_algo="svm")
+    orch.run_gated_test_evaluation(val.evaluation_run_id, confirmation_token="CONFIRM_TEST_EVALUATION")
+
+    # Check lock file exists
+    locks_file = mock_trained_models["evaluations_dir"] / "test_holdout_locks.json"
+    assert locks_file.exists()
+    reg = orch.eval_registry
+    lock_info = reg.get_test_lock(mock_dataset_env["eng_run_id"])
+    assert lock_info is not None
+    assert lock_info["evaluation_run_id"] == val.evaluation_run_id
+    assert lock_info["primary_candidate"] == "svm"
+
+    # Delete the lock file to simulate accidental deletion
+    locks_file.unlink()
+    assert not locks_file.exists()
+
+    # Fallback inspection of saved manifests MUST recover the lock
+    recovered_lock = reg.get_test_lock(mock_dataset_env["eng_run_id"])
+    assert recovered_lock is not None
+    assert recovered_lock["evaluation_run_id"] == val.evaluation_run_id
+
+    # And attempting a new test run on that split must STILL be blocked
+    val_new = orch.run_validation_evaluation(
+        training_run_id=mock_trained_models["training_run_id"],
+        algorithms=["svm", "mlp"],
+        allow_test_fixtures=False,
+    )
+    orch.freeze_candidate_models(val_new.evaluation_run_id, primary_candidate_algo="mlp")
+    with pytest.raises(PermissionError) as exc_blocked:
+        orch.run_gated_test_evaluation(val_new.evaluation_run_id, confirmation_token="CONFIRM_TEST_EVALUATION")
+    assert "TEST HOLDOUT GOVERNANCE VIOLATION" in str(exc_blocked.value)
+
+
+def test_audit_governance_default_batch_size_safeguards():
+    """Audit 6: Verify default batch size is 10,000 and resource-aware safeguards work."""
+    from config.settings import settings
+
+    assert settings.evaluation.default_batch_size == 10_000
+    assert EvaluationResourceManager.DEFAULT_BATCH_SIZE == 10_000
+    runner = InferenceRunner()
+    assert runner.batch_size == 10_000
+
+    # Resource preflight under nominal conditions maintains 10,000 batch size
+    preflight = EvaluationResourceManager.perform_preflight_check(
+        num_samples=50_000,
+        num_features=80,
+        num_classes=15,
+        sparse_density=0.1,
+    )
+    assert preflight.batch_size == 10_000
+    assert preflight.is_safe is True
