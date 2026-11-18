@@ -1,0 +1,74 @@
+{
+  "manifest_version": "1.0.0",
+  "product_name": "AI-Powered Network Intrusion Detection System (NIDS)",
+  "version": "1.0.0",
+  "release_status": "Production Release",
+  "release_date_utc": "2026-11-18T13:45:00Z",
+  "git_branch": "master",
+  "python_version": "3.13.14",
+  "target_environment": {
+    "os": "Windows 11",
+    "processor": "AMD Ryzen 5 5600H (CPU-compatible execution)",
+    "system_ram": "24 GB",
+    "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU (Optional, 4 GB VRAM)",
+    "virtual_environment": ".venv"
+  },
+  "dependencies": {
+    "manifest_file": "requirements.txt",
+    "sha256": "e25cbea54004f19dc4392d7974bdd062d3cbcafc6e1a302dd73fc05535d545c5"
+  },
+  "authorized_algorithms": [
+    "Support Vector Machine (LinearSVC)",
+    "Multilayer Perceptron (MLPClassifier)",
+    "Decision Tree (DecisionTreeClassifier)"
+  ],
+  "benchmark_dataset": "CIC-IDS-2017",
+  "threat_intelligence_standard": "MITRE ATT&CK Enterprise v20.1",
+  "test_suite": {
+    "total_tests": 268,
+    "passed": 268,
+    "failed": 0,
+    "skipped": 0,
+    "warnings": 49,
+    "execution_time_seconds": 15.08,
+    "status": "PASSED"
+  },
+  "supported_capabilities": [
+    "CSV Flow Upload, Validation & Chunked Parsing (CP-04)",
+    "Dataset Engineering, Leakage-Free Splitting & Imputation (CP-05)",
+    "ML Training Pipeline, Resource Preflight & Model Registry (CP-06)",
+    "Model Evaluation Laboratory, ROC/PR Curves & Holdout Governance (CP-07)",
+    "Intrusion Detection Engine, Multi-Algorithm Inference & Disagreement Analysis (CP-08)",
+    "Prediction Explorer, Attribute Filtering & Analyst Review Journal (CP-09)",
+    "Threat Intelligence, STIX 2.1 ATT&CK Loader & Evidence-Aware Context (CP-10)",
+    "Publication-Grade PDF Reporting, Structured CSV Exports & Evidence Bundles (CP-11)",
+    "Local-First Architecture, Concurrency Locks & Integrity Verification (CP-12)"
+  ],
+  "security_safeguards": [
+    "Strict local-first runtime with zero telemetry or cloud API leakage",
+    "Strict test-fixture isolation preventing synthetic models in production",
+    "Cryptographic SHA-256 verification across all dataset, model, and report artifacts",
+    "CSV formula injection (DDE) mitigation on all spreadsheet downloads",
+    "Configurable IPv4 host address privacy redaction across reports and bundles",
+    "Path-traversal and directory escape protection on all file and archive operations",
+    "Immutable raw datasets and append-only analyst audit journals"
+  ],
+  "known_limitations": [
+    "Offline batch analysis: designed for flow CSV captures, not live raw packet sniffing (PCAP)",
+    "Fixed algorithm scope: restricted strictly to the 3 authorized algorithms by architectural mandate",
+    "Evaluation holdout lock: one-time test evaluation per candidate freeze to prevent data snooping"
+  ],
+  "documentation_inventory": {
+    "readme": "README.md",
+    "architecture": "ARCHITECTURE.md",
+    "installation_guide": "docs/INSTALLATION_GUIDE.md",
+    "release_notes": "docs/RELEASE_NOTES_v1.0.0.md",
+    "final_release_audit": "docs/FINAL_RELEASE_AUDIT.md",
+    "user_guide": "docs/REPORTING_USER_GUIDE.md"
+  },
+  "source_distribution": {
+    "filename": "nids_v1.0.0_source.zip",
+    "sha256": "010126d53f4308b75f8a09deba586ef6f2f708f24b9b205b53cddd068ead238d",
+    "size_bytes": 455694
+  }
+}

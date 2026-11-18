@@ -55,11 +55,6 @@ class TestCSVParserAudit(unittest.TestCase):
         p.write_bytes(content_bytes)
         return p
 
-    def _write_file(self, filename: str, content_bytes: bytes) -> Path:
-        p = self.raw_dir / filename
-        p.write_bytes(content_bytes)
-        return p
-
     def test_crlf_and_lf_line_endings_agreement(self) -> None:
         """CRLF and LF line endings parse identically without phantom blank lines."""
         content = (

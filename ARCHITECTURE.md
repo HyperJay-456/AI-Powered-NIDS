@@ -1,187 +1,146 @@
 # System Architecture: AI-Powered Network Intrusion Detection System (NIDS)
-
-## 1. Executive Architectural Overview
-
-The AI-Powered Network Intrusion Detection System (NIDS) is architected as a modular, layered machine learning pipeline paired with an interactive Streamlit presentation engine. Designed specifically for academic rigor and engineering reproducibility, the platform analyzes high-dimensional network flow records from the **CIC-IDS-2017** benchmark corpus to identify both broad anomalous traffic and specific intrusion signatures.
-
-The platform strictly incorporates three foundational, complementary machine learning paradigms:
-1. **Support Vector Machine (SVM):** Maximum-margin hyperplanes for geometric separation in high-dimensional feature spaces.
-2. **Multilayer Perceptron (MLP):** Feedforward artificial neural networks capturing non-linear network traffic relationships.
-3. **Decision Tree (DT):** Recursive partition trees providing rapid, interpretable, deterministic inference.
+## Version 1.0.0 Production Architecture Specification
 
 ---
 
-## 2. Layered Architecture Diagram
+## 1. Executive Architectural Overview & Core Invariants
 
-```
-+----------------------------------------------------------------------------------------------------+
-|                                    PRESENTATION LAYER (Streamlit)                                  |
-|                                                                                                    |
-|   +-----------------------+  +------------------------+  +--------------------+  +--------------+  |
-|   | Overview & Blueprint  |  | Pipeline Status View   |  | Model Parameters   |  | Benchmarks   |  |
-|   +-----------------------+  +------------------------+  +--------------------+  +--------------+  |
-+-------------------------------------------------+--------------------------------------------------+
-                                                  | API Calls / Model Loader
-                                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                    INFERENCE & EVALUATION LAYER                                    |
-|                                                                                                    |
-|   +---------------------------------------------+  +-------------------------------------------+   |
-|   | src/evaluation/metrics.py                   |  | src/evaluation/benchmark.py               |   |
-|   | - Accuracy, Precision, Recall, F1 (Weighted)|  | - Confusion Matrix & ROC-AUC curves       |   |
-|   | - Cross-validation aggregator               |  | - Inference Latency & Resource Profiler   |   |
-|   +---------------------------------------------+  +-------------------------------------------+   |
-+-------------------------------------------------+--------------------------------------------------+
-                                                  |
-                                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                     MODEL SUBSYSTEM LAYER                                          |
-|                                                                                                    |
-|      BaseModel Pipeline Interface (src/models/base.py)                                             |
-|        ├── src/models/svm_model.py          -> Support Vector Machine (Linear / RBF SVC)           |
-|        ├── src/models/mlp_model.py          -> Multilayer Perceptron (MLPClassifier)               |
-|        └── src/models/decision_tree.py      -> Decision Tree (CART DecisionTreeClassifier)         |
-|                                                                                                    |
-|      Serialization Engine (joblib -> models/saved/*.joblib)                                        |
-+-------------------------------------------------+--------------------------------------------------+
-                                                  | Clean Feature Tensors
-                                                  v
-+----------------------------------------------------------------------------------------------------+
-|                               FEATURE ENGINEERING LAYER (src/features)                             |
-|                                                                                                    |
-|   +------------------------------------+  +------------------------------------+                   |
-|   | src/features/scaler.py             |  | src/features/encoder.py            |                   |
-|   | - Robust / Standard Scaling        |  | - Label Encoding & Binarization    |                   |
-|   | - Fit-on-train / Transform-on-test |  | - Class mapping (15 -> Multi-class)|                   |
-|   +------------------------------------+  +------------------------------------+                   |
-+-------------------------------------------------+--------------------------------------------------+
-                                                  | Validated Clean DataFrames
-                                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                DATA INGESTION & CLEANSING (src/data)                               |
-|                                                                                                    |
-|   +------------------------------------+  +------------------------------------+                   |
-|   | src/data/loader.py                 |  | src/data/preprocessor.py           |                   |
-|   | - Stream/Chunked CSV Reader        |  | - Column strip & standard naming   |                   |
-|   | - CIC-IDS-2017 File Aggregator     |  | - Infinite (inf/-inf) remediation  |                   |
-|   | - Integrity & Schema Validation    |  | - Missing value (NaN) imputation   |                   |
-|   +------------------------------------+  +------------------------------------+                   |
-+-------------------------------------------------+--------------------------------------------------+
-                                                  | Read Raw CSVs
-                                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                  PHYSICAL STORAGE / DATA ASSETS                                    |
-|   ├── data/raw/          <- Kaggle CIC-IDS-2017 CSV flow archives (gitignored)                     |
-|   ├── data/processed/    <- Parquet / Feather cleaned splits (gitignored)                          |
-|   └── models/saved/      <- Serialized estimators, scalers, and label maps (gitignored)            |
-+----------------------------------------------------------------------------------------------------+
-```
+The **AI-Powered Network Intrusion Detection System (NIDS)** is architected as an offline-first, modular Python platform coupled with an interactive Streamlit presentation layer. Designed for academic rigor and verifiable engineering reproducibility, the platform analyzes high-dimensional network flow records from the **CIC-IDS-2017** benchmark corpus to detect cyber intrusions, benchmark machine learning paradigms, and generate cryptographically verifiable evidence.
+
+### Non-Negotiable Invariants
+1. **Strictly Three ML Algorithms:** Classification is restricted strictly to:
+   - **Support Vector Machine (LinearSVC):** Maximum-margin hyperplanes for geometric separation in high-dimensional feature spaces.
+   - **Multilayer Perceptron (MLPClassifier):** Feedforward artificial neural networks with adaptive mini-batch iteration.
+   - **Decision Tree (DecisionTreeClassifier):** Transparent, deterministic recursive binary splitting on physical flow attributes.
+   *No fourth algorithm, voting ensemble, or external model is permitted or used.*
+2. **Zero Data Leakage:** Preprocessing transformations (median imputation, standard scaling, label encoding) are fitted strictly on the training partition. Final test holdouts are protected by persistent evaluation locks.
+3. **Zero Data Fabrication:** Unpopulated runtime directories display genuine empty states. Synthetic test fixtures are strictly isolated from production registries.
+4. **Local-First Runtime:** The application executes entirely locally without cloud dependencies, external AI APIs, or remote data transmission.
 
 ---
 
-## 3. End-to-End Data Flow Lifecycle
+## 2. Comprehensive Layered Architecture
 
-```
-[ CIC-IDS-2017 Raw CSVs ]
-            │
-            ▼
-┌───────────────────────────────┐
-│ 1. Ingestion & Sanitization   │  • Header stripping (" Label" -> "Label")
-│    (src/data/loader.py)       │  • Validation of expected 78 flow features
-└───────────┬───────────────────┘
-            │
-            ▼
-┌───────────────────────────────┐
-│ 2. Preprocessing & Cleansing  │  • Replace inf / -inf with feature maximums or NaN
-│    (src/data/preprocessor.py) │  • Impute or drop NaN flow records
-│                               │  • Remove zero-variance / constant flow attributes
-└───────────┬───────────────────┘
-            │
-            ▼
-┌───────────────────────────────┐
-│ 3. Feature Transformation     │  • Fit Robust/StandardScaler on Training split only
-│    (src/features/scaler.py)   │  • Transform Test/Validation partitions
-│                               │  • Label encode Benign vs. Multi-attack taxonomy
-└───────────┬───────────────────┘
-            │
-            ▼
-┌───────────────────────────────┐
-│ 4. Stratified Partitioning    │  • 70% Train, 10% Validation, 20% Holdout Test
-│    (src/data/split.py)        │  • Preserve class balance across rare attack vectors
-└───────────┬───────────────────┘
-            │
-            ├─────────────────────────────────────────┬────────────────────────────────────────┐
-            ▼                                         ▼                                        ▼
-┌───────────────────────────────┐         ┌───────────────────────────────┐        ┌───────────────────────────────┐
-│ Support Vector Machine (SVM)  │         │ Multilayer Perceptron (MLP)   │        │ Decision Tree (CART)          │
-│ • Kernel: RBF / Linear        │         │ • Architecture: (64, 32)      │        │ • Criterion: Gini / Entropy   │
-│ • Hyperplane margin           │         │ • Activation: ReLU            │        │ • Max Depth: 15               │
-│ • Regularization: C           │         │ • Solver: Adam (adaptive)     │        │ • Min Leaf: 5                 │
-└───────────┬───────────────────┘         └───────────┬───────────────────┘        └───────────┬───────────────────┘
-            │                                         │                                        │
-            └─────────────────────────────────────────┼────────────────────────────────────────┘
-                                                      │
-                                                      ▼
-                                  ┌───────────────────────────────────────┐
-                                  │ 5. Model Serialization                │
-                                  │    (joblib.dump -> models/saved/)     │
-                                  └───────────────────┬───────────────────┘
-                                                      │
-                                                      ▼
-                                  ┌───────────────────────────────────────┐
-                                  │ 6. Evaluation & Benchmarking          │
-                                  │    • Confusion Matrix & ROC-AUC       │
-                                  │    • Precision / Recall / F1-Score    │
-                                  │    • Empirical Inference Latency (ms) │
-                                  └───────────────────┬───────────────────┘
-                                                      │
-                                                      ▼
-                                  ┌───────────────────────────────────────┐
-                                  │ 7. Streamlit Control Dashboard        │
-                                  │    • Diagnostic Visualizations        │
-                                  │    • Live Network Flow Inspection     │
-                                  └───────────────────────────────────────┘
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               PRESENTATION LAYER (Streamlit)                            │
+│  dashboard/                                                                            │
+│  ├── theme.py (CSS Tokens)        ├── navigation.py (8 Routes)                          │
+│  ├── components/ (Headers, MetricCards, ContentCards, Badges, Panels)                  │
+│  └── pages/                                                                            │
+│      ├── overview.py              ├── traffic_analysis.py      ├── detection_center.py  │
+│      ├── model_laboratory.py      ├── threat_intelligence.py   ├── prediction_explorer.py│
+│      ├── reports.py               └── about.py                                         │
+└───────────────────────────────────────────┬────────────────────────────────────────────┘
+                                            │ Dispatches Actions / Reads Registries
+                                            ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        CORE APPLICATION & FORENSIC SUBSYSTEMS                          │
+│                                                                                        │
+│ ┌───────────────────────────┐  ┌───────────────────────────┐  ┌──────────────────────┐ │
+│ │  REPORTING & EVIDENCE     │  │   THREAT INTELLIGENCE     │  │ PREDICTION EXPLORER  │ │
+│ │  src/reporting/           │  │   src/threat_intelligence/│  │ src/explorer/        │ │
+│ │  - PDFReportGenerator     │  │   - AttackCatalog (STIX)  │  │ - ExplorerRegistry   │ │
+│ │  - StructuredExporter     │  │   - MappingRegistry       │  │ - PredictionReader   │ │
+│ │  - EvidenceBundlePackager │  │   - ThreatContextService  │  │ - ReviewStore        │ │
+│ │  - ReportRegistry         │  │   - ThreatInsightEngine   │  │ - RecordInspector    │ │
+│ └─────────────▲─────────────┘  └─────────────▲─────────────┘  └──────────▲───────────┘ │
+│               │                              │                           │             │
+│               └──────────────────────────────┼───────────────────────────┘             │
+│                                              │ Reads Run Manifest & Predictions        │
+│                                              ▼                                         │
+│ ┌────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ INTRUSION DETECTION ENGINE (src/detection/)                                        │ │
+│ │ - ModelEligibilityVerifier    - DetectionDatasetLoader   - DetectionRegistry       │ │
+│ │ - DetectionInferencePipeline  - ScoreInterpreter         - DisagreementAnalyzer    │ │
+│ └────────────────────────────────────────────▲───────────────────────────────────────┘ │
+│                                              │ Reuses Models & Preprocessors           │
+│                       ┌──────────────────────┴──────────────────────┐                  │
+│                       ▼                                             ▼                  │
+│ ┌───────────────────────────────────────────┐ ┌──────────────────────────────────────┐ │
+│ │ MODEL TRAINING & REGISTRY                 │ │ MODEL EVALUATION LABORATORY          │ │
+│ │ src/models/                               │ │ src/evaluation/                      │ │
+│ │ - SVMTrainingEngine (LinearSVC)           │ │ - EvaluationOrchestrator             │ │
+│ │ - MLPTrainingEngine (MLPClassifier)       │ │ - ConfusionMatrixEngine              │ │
+│ │ - DecisionTreeTrainingEngine              │ │ - ROC & Precision-Recall Analyzers   │ │
+│ │ - TrainingOrchestrator & ModelRegistry    │ │ - CandidateFreeze & TestHoldoutLock  │ │
+│ └─────────────────────▲─────────────────────┘ └──────────────────▲───────────────────┘ │
+│                       │ Train Split                              │ Val / Test Splits   │
+│                       └──────────────────────┬───────────────────┘                     │
+│                                              ▼                                         │
+│ ┌────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ DATASET ENGINEERING & PREPROCESSING (src/data/engineering/)                        │ │
+│ │ - DatasetSplitter (70/15/15) - MissingValuesImputer     - NumericalScaler (Standard)│ │
+│ │ - CategoricalEncoder         - DuplicateIsolationPolicy - ArtifactManager          │ │
+│ └────────────────────────────────────────────▲───────────────────────────────────────┘ │
+│                                              │ Validated Datasets                      │
+│                                              ▼                                         │
+│ ┌────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ CSV INGESTION & DATA QUALITY (src/data/)                                           │ │
+│ │ - CSVIngestionEngine (Chunked) - CSVValidator (Structural) - DiskBackedDuplicate   │ │
+│ └────────────────────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Component-by-Component Specifications
+## 3. Subsystem Specifications & Contracts
 
-### 4.1 Configuration Core (`config/settings.py`)
-- **Responsibility:** Serves as the single source of truth for runtime directories, algorithm hyperparameters, dataset paths, and UI constants.
-- **Key Classes:** `AppConfig`, `DatasetConfig`, `ModelHyperparameters`, `EvaluationConfig`, `StreamlitConfig`.
-- **Invariants:** Guaranteed absolute path resolution via `pathlib.Path`; frozen data classes preventing accidental runtime mutation.
+### 3.1 Data Ingestion & Quality (`src/data/`)
+- **Ingestion Pipeline:** Reads large CSVs (up to 500 MB per file) using bounded chunk streaming (`chunk_size=50_000`).
+- **Structural Validation:** Analyzes delimiter consistency, non-ASCII characters, empty lines, and column schema compliance without loading entire files into memory.
+- **Deduplication:** `DiskBackedDuplicateDetector` serializes records into length-prefixed bytes and tracks SHA-256 fingerprints to identify intra-file and cross-file duplicate flows.
+- **Raw File Immutability:** Uploaded files are copied to `data/raw/` with read-only permissions and verified with SHA-256 checksums in `IngestionManifest`.
 
-### 4.2 Data Subsystem (`src/data`)
-- **`loader.py`:** Handles robust parsing of CIC-IDS-2017 CSV files. Manages chunking to conserve memory when loading gigabyte-scale flow tables.
-- **`preprocessor.py`:** Standardizes column naming (removes leading/trailing whitespaces), enforces numeric casting, detects and mitigates infinite values generated by flow rate calculations (e.g., `Flow Bytes/s`), and executes missing value imputation.
-- **`split.py`:** Executes stratified train-validation-test partitioning to prevent data leakage.
+### 3.2 Dataset Engineering & Preprocessing (`src/data/engineering/`)
+- **Partitioning:** Stratified splitting into 70% Training, 15% Validation, and 15% Test holdout partitions.
+- **Leakage Prevention:** Numerical imputers (median) and scalers (`StandardScaler`) fit strictly on the training partition. The fitted transformers are persisted in `data/processed/` for downstream inference.
+- **Duplicate Isolation:** Duplicate flow records spanning partition boundaries are isolated to prevent cross-partition leakage.
+- **Feature Policy:** Preserves flow identifiers (Source/Destination IP, Timestamp) in metadata provenance while excluding them from model feature matrices.
 
-### 4.3 Feature Subsystem (`src/features`)
-- **`scaler.py`:** Fits statistical scalers strictly on training splits to prevent lookahead bias. Supports `StandardScaler` and `RobustScaler` (resistant to extreme network packet outliers).
-- **`encoder.py`:** Encodes attack categories into integer labels and one-hot representations. Handles both binary detection (Benign vs. Malicious) and multi-class categorization (15 discrete attack categories).
+### 3.3 Model Subsystem & Training (`src/models/`)
+- **SVM Engine:** `LinearSVC` with dual optimization formulation, configurable margin regularization $C$, and balanced class weights.
+- **MLP Engine:** `MLPClassifier` with mini-batch incremental learning (`partial_fit`), adaptive learning rate schedules, and convergence stopping.
+- **Decision Tree Engine:** `DecisionTreeClassifier` utilizing unscaled physical flow attributes with Gini impurity / entropy criteria and maximum depth bounding.
+- **Resource Preflight:** Enforces hardware safety checks before training, validating that minimum free RAM (512 MB) and disk space are available.
 
-### 4.4 Model Subsystem (`src/models`)
-- **Unified Interface:** Each model wraps a scikit-learn estimator conforming to `fit(X, y)`, `predict(X)`, `predict_proba(X)`, `save(path)`, and `load(path)`.
-- **Approved Models:**
-  1. `SVMModel`: Support Vector Classification with probability calibration.
-  2. `MLPModel`: Multi-layer neural network with early stopping and adaptive learning.
-  3. `DecisionTreeModel`: Recursive binary tree with pre-pruning (`max_depth`, `min_samples_leaf`) to mitigate overfitting.
+### 3.4 Model Evaluation Laboratory (`src/evaluation/`)
+- **Multiclass Metrics:** Accuracy, Balanced Accuracy, Precision (Macro/Weighted), Recall, F1-Score, and Cohen's Kappa.
+- **Visual Diagnostics:** Normalized multiclass confusion matrices, One-vs-Rest ROC curves, and Precision-Recall curves.
+- **Candidate Freezing:** Candidate model artifacts and SHA-256 checksums are frozen prior to test-holdout evaluation.
+- **Test Holdout Lock Governance:** A persistent file-based lock prevents rerunning test-holdout evaluation on altered candidate sets, stopping data snooping.
 
-### 4.5 Evaluation Subsystem (`src/evaluation`)
-- **`metrics.py`:** Computes weighted and macro Precision, Recall, F1-Score, and multi-class ROC-AUC using One-vs-Rest (OvR).
-- **`benchmarks.py`:** Measures wall-clock inference latency per sample and memory footprint to benchmark operational viability in line-rate intrusion detection environments.
+### 3.5 Intrusion Detection Engine (`src/detection/`)
+- **Batch Multi-Model Inference:** Executes single-model or comparative multi-model evaluation across chunks of 10,000 rows.
+- **Model Disagreement Analysis:** Computes unanimous agreement, majority consensus, and algorithm divergence without pseudo-ensembling.
+- **Row Accounting:** Reconciles input rows against successfully classified, rejected, and skipped records.
 
-### 4.6 Presentation Subsystem (`app.py`)
-- Built with Streamlit to deliver responsive dashboarding.
-- Provides modular views for system health, dataset diagnostics, model configurations, empirical benchmark tables, and live simulated packet classification.
+### 3.6 Prediction Explorer & Analyst Review (`src/explorer/`)
+- **Attribute Filtering:** Multi-column search, score thresholding, attack family filtering, and bounded pagination.
+- **Human-in-the-Loop Triage:** Authorized dispositions: *Potentially Malicious*, *Likely Benign*, *False Positive*, *Needs Further Investigation*, *Inconclusive*.
+- **Append-Only Journal:** Review events are appended to `data/analyst_reviews/<run_id>/review_events.jsonl` with SHA-256 event hash chaining.
+
+### 3.7 Threat Intelligence & ATT&CK Context (`src/threat_intelligence/`)
+- **STIX 2.1 Pinned Catalogue:** Official MITRE ATT&CK Enterprise v20.1 catalogue stored locally in `data/knowledge/mitre_attack/`.
+- **Candidate Label Mappings:** Connects dataset attack labels to ATT&CK techniques with explicit status governance (`Candidate`, `Approved`, `Rejected`).
+- **Evidence Evaluation:** Assesses available network flow telemetry (ports, packet lengths, flow rates) against missing forensic telemetry (host process trees, memory dumps).
+
+### 3.8 Reporting & Evidence Export (`src/reporting/`)
+- **PDF Generator:** ReportLab compiler with two-pass `NumberedCanvas` rendering publication-grade documents with headers, footers, and page numbers.
+- **Four Archetypes:** Executive Security Summary, Technical Detection Report, Analyst Review Report, and Consolidated Assessment Report.
+- **Structured Exports:** `report_data.json` and sanitized CSV tables (`prediction_summary.csv`, `model_comparison.csv`, etc.).
+- **Security Protections:** CSV formula injection mitigation and IPv4 host address redaction (`192.168.1.xxx`).
+- **Evidence Bundles:** Cryptographically verified `evidence_bundle_<report_id>.zip` packages with path-traversal safeguards.
 
 ---
 
-## 5. Architectural Principles & Best Practices
+## 4. Threat Boundary & Security Matrix
 
-1. **Separation of Concerns (SoC):** Data ingestion, feature transformations, model logic, and UI rendering reside in strictly separated packages.
-2. **Deterministic Reproducibility:** Global random seeds (`random_state = 42`) are uniformly configured across dataset splitting, neural weight initialization, and decision tree splits.
-3. **Data Leakage Prevention:** Scalers and encoders are strictly fitted on training splits, with transformations applied symmetrically to validation and test partitions.
-4. **Defensive Programming:** Explicit verification of column schemas, infinite value remediation, and null value sanitization before any data reaches model estimators.
-5. **No Mock Logic or Fabricated Statistics:** All views and metrics reflect genuine underlying model outputs or clearly state their awaiting stage.
+| Security Threat | Vulnerability Vector | Implemented Architectural Defense |
+|---|---|---|
+| **CSV Formula Injection** | Opening exported CSVs in Microsoft Excel or Calc | Prepending single quote (`'`) to cells starting with `=`, `+`, `-`, `@` |
+| **Path Traversal / Escape** | Malicious directory names or archive member paths | Strict path normalization and boundary validation against root directories |
+| **Data Snooping** | Repeated tuning against final test holdout | Persistent evaluation locks preventing re-evaluation on test split |
+| **Untrusted Deserialization** | Loading arbitrary `.joblib` / `.pkl` binaries | Restricting loading strictly to trusted internal models with verified SHA-256 |
+| **Privacy / Telemetry Leakage**| Sensitive IP addresses in exported reports | Automatic masking of IPv4 host octets (`192.168.1.xxx`) and note redactions |
+| **Network Exposure** | Streamlit binding to public interfaces | Local loopback binding (`127.0.0.1` / `localhost`) without external cloud APIs |

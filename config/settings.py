@@ -251,6 +251,7 @@ class StreamlitConfig:
     app_title: str = "AI-Powered Network Intrusion Detection System"
     app_subtitle: str = "Cybersecurity Threat Analytics & Traffic Classification Engine"
     app_icon: str = "🛡️"
+    app_version: str = "1.0.0"
     layout: str = "wide"
     initial_sidebar_state: str = "expanded"
     theme_color: str = "#0E1117"
@@ -263,6 +264,7 @@ class StreamlitConfig:
 class AppConfig:
     """Master configuration container for the NIDS platform."""
 
+    version: str = "1.0.0"
     base_dir: Path = BASE_DIR
     data_dir: Path = DATA_DIR
     raw_data_dir: Path = RAW_DATA_DIR

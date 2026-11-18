@@ -4,6 +4,7 @@ import streamlit as st
 
 from config.settings import settings
 from dashboard.components.headers import page_header, section_header
+from src import __version__
 
 
 def render() -> None:
@@ -12,8 +13,8 @@ def render() -> None:
         title="About the NIDS Platform",
         subtitle="Academic context, theoretical foundations, and system specifications",
         icon="ℹ️",
-        badge_text="Academic / MIT License",
-        badge_variant="neutral",
+        badge_text=f"v{__version__} Release",
+        badge_variant="success",
     )
 
     section_header(
@@ -52,7 +53,7 @@ def render() -> None:
             """
             **Multilayer Perceptron (MLP)**
             - *Paradigm:* Feedforward Neural Architecture.
-            - *Rationale:* Models complex non-linear correlations and cross-feature interactions across expected CIC-IDS-2017 continuous network flow statistics (specification awaiting validation in CP-04/05).
+            - *Rationale:* Models complex non-linear correlations and cross-feature interactions across CIC-IDS-2017 continuous network flow telemetry with adaptive early stopping.
             """
         )
     with col3:
@@ -61,6 +62,37 @@ def render() -> None:
             **Decision Tree (CART)**
             - *Paradigm:* Recursive Binary Partitioning.
             - *Rationale:* Deterministic hierarchical decision logic, directly interpretable split paths, and robust handling of non-linear attribute thresholds.
+            """
+        )
+
+    section_header(
+        title="System Specifications & Release Information",
+        description="Release metadata and runtime specifications for the local platform:",
+    )
+
+    spec_col1, spec_col2, spec_col3 = st.columns(3)
+    with spec_col1:
+        st.markdown(
+            f"""
+            - **Platform Version:** `v{__version__}`
+            - **Release Status:** Production Release
+            - **Architecture:** Local-First / Offline
+            """
+        )
+    with spec_col2:
+        st.markdown(
+            """
+            - **Python Environment:** Python 3.13.14
+            - **Interface:** Streamlit Framework
+            - **Dataset Benchmark:** CIC-IDS-2017
+            """
+        )
+    with spec_col3:
+        st.markdown(
+            """
+            - **Algorithms (3):** LinearSVC, MLP, DecisionTree
+            - **Knowledge Base:** MITRE ATT&CK v20.1
+            - **Reporting:** Publication-Grade PDF & Bundles
             """
         )
 
