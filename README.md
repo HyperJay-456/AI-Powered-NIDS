@@ -1,5 +1,7 @@
 # AI-Powered Network Intrusion Detection System (NIDS)
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-AI--Powered--NIDS-blue.svg?logo=github)](https://github.com/HyperJay-456/AI-Powered-NIDS)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Showcase-00e5ff.svg)](https://hyperjay-456.github.io/AI-Powered-NIDS/)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
 [![Version: 1.0.0](https://img.shields.io/badge/version-1.0.0-green.svg)](docs/RELEASE_NOTES_v1.0.0.md)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35%2B-FF4B4B.svg)](https://streamlit.io/)
@@ -8,6 +10,8 @@
 [![License: Academic/MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 An academic, production-grade Machine Learning system designed to ingest, validate, classify, and audit network traffic flow telemetry using the benchmark **CIC-IDS-2017** dataset. Built with an offline-first modular Python architecture and an interactive **Streamlit** control console, the platform implements, benchmarks, and operationalizes three authorized machine learning algorithms: **Support Vector Machine (LinearSVC)**, **Multilayer Perceptron (MLPClassifier)**, and **Decision Tree (DecisionTreeClassifier)**.
+
+🌐 **Interactive Web Showcase & Documentation:** [https://hyperjay-456.github.io/AI-Powered-NIDS/](https://hyperjay-456.github.io/AI-Powered-NIDS/)
 
 ---
 
@@ -150,8 +154,16 @@ pip install -r requirements.txt
 
 ## Running the Application
 
-Launch the local Streamlit dashboard:
+### Option A: One-Click Windows Launch (Recommended)
+The repository includes automated Windows batch utilities for rapid execution:
+- **`start.bat`**: Validates the Python virtual environment, verifies port 8501, initializes the Streamlit server in a dedicated console window, and automatically launches your browser at `http://localhost:8501`.
+- **`stop.bat`**: Scans for active processes listening on port 8501 and safely terminates the entire NIDS server process tree.
+
+Simply double-click `start.bat` in Windows Explorer to launch, and double-click `stop.bat` to shut down.
+
+### Option B: Terminal Launch (PowerShell)
 ```powershell
+.\.venv\Scripts\Activate.ps1
 streamlit run app.py
 ```
 The application will open automatically in your browser at `http://localhost:8501`.
