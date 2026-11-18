@@ -67,6 +67,8 @@ data/analyses/*
 !data/analyses/.gitkeep
 data/analyst_reviews/*
 !data/analyst_reviews/.gitkeep
+data/reports/*
+!data/reports/.gitkeep
 data/knowledge/*
 !data/knowledge/.gitkeep
 !data/knowledge/*/

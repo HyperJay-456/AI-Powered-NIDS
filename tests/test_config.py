@@ -11,6 +11,7 @@ from config.settings import (
     MODELS_DIR,
     PROCESSED_DATA_DIR,
     RAW_DATA_DIR,
+    REPORTS_DIR,
     SAVED_MODELS_DIR,
     SRC_DIR,
     SUPPORTED_ALGORITHMS,
@@ -32,6 +33,7 @@ class TestConfig(unittest.TestCase):
             ("SAVED_MODELS_DIR", SAVED_MODELS_DIR),
             ("LOGS_DIR", LOGS_DIR),
             ("SRC_DIR", SRC_DIR),
+            ("REPORTS_DIR", REPORTS_DIR),
         ]:
             self.assertIsInstance(path_obj, Path, f"{path_name} must be a Path instance")
             self.assertTrue(path_obj.is_absolute(), f"{path_name} must be an absolute path")
@@ -62,6 +64,13 @@ class TestConfig(unittest.TestCase):
         self.assertIn("BENIGN", settings.dataset.known_attack_classes)
         self.assertIn("DoS Hulk", settings.dataset.known_attack_classes)
         self.assertEqual(settings.dataset.random_state, 42)
+
+    def test_reporting_specification(self) -> None:
+        """Verify CP-11 reporting configurations and directory."""
+        self.assertEqual(settings.reporting.reports_dir, REPORTS_DIR)
+        self.assertGreater(settings.reporting.max_bundle_size_mb, 0)
+        self.assertTrue(settings.reporting.default_redact_ips)
+        self.assertTrue(settings.reporting.default_include_analyst_notes)
 
 
 if __name__ == "__main__":

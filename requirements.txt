@@ -25,6 +25,10 @@ plotly>=5.20.0
 pydantic>=2.7.0
 python-dotenv>=1.0.0
 
+# Reporting & Document Generation
+reportlab>=5.0.0
+pypdf>=5.0.0
+
 # Development, Verification & Testing
 pytest>=8.0.0
 pytest-cov>=5.0.0

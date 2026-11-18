@@ -22,6 +22,7 @@ SAVED_MODELS_DIR: Path = MODELS_DIR / "saved"
 EVALUATIONS_DIR: Path = MODELS_DIR / "evaluations"
 ANALYSES_DIR: Path = DATA_DIR / "analyses"
 ANALYST_REVIEWS_DIR: Path = DATA_DIR / "analyst_reviews"
+REPORTS_DIR: Path = DATA_DIR / "reports"
 KNOWLEDGE_DIR: Path = DATA_DIR / "knowledge"
 MITRE_ATTACK_DIR: Path = KNOWLEDGE_DIR / "mitre_attack"
 MAPPINGS_DIR: Path = KNOWLEDGE_DIR / "mappings"
@@ -225,6 +226,22 @@ class PreprocessingConfig:
 
 
 # ==============================================================================
+# Reporting & Evidence Export Configurations (CP-11)
+# ==============================================================================
+@dataclass(frozen=True)
+class ReportingConfig:
+    """Configuration for cybersecurity reporting and digital evidence export."""
+
+    reports_dir: Path = REPORTS_DIR
+    max_bundle_size_mb: int = 500
+    default_preview_rows: int = 50
+    default_page_size: str = "letter"
+    default_redact_ips: bool = True
+    default_include_analyst_notes: bool = True
+    max_records_per_pdf_table: int = 100
+
+
+# ==============================================================================
 # Streamlit Application Presentation Settings
 # ==============================================================================
 @dataclass(frozen=True)
@@ -256,6 +273,7 @@ class AppConfig:
     evaluations_dir: Path = EVALUATIONS_DIR
     analyses_dir: Path = ANALYSES_DIR
     analyst_reviews_dir: Path = ANALYST_REVIEWS_DIR
+    reports_dir: Path = REPORTS_DIR
     knowledge_dir: Path = KNOWLEDGE_DIR
     mitre_attack_dir: Path = MITRE_ATTACK_DIR
     mappings_dir: Path = MAPPINGS_DIR
@@ -268,6 +286,7 @@ class AppConfig:
     models: ModelHyperparameters = field(default_factory=ModelHyperparameters)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     detection: DetectionConfig = field(default_factory=DetectionConfig)
+    reporting: ReportingConfig = field(default_factory=ReportingConfig)
     ui: StreamlitConfig = field(default_factory=StreamlitConfig)
 
     def ensure_directories(self) -> None:
@@ -280,6 +299,7 @@ class AppConfig:
             self.evaluations_dir,
             self.analyses_dir,
             self.analyst_reviews_dir,
+            self.reports_dir,
             self.knowledge_dir,
             self.mitre_attack_dir,
             self.mappings_dir,
