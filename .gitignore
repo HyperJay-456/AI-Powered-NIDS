@@ -67,6 +67,11 @@ data/analyses/*
 !data/analyses/.gitkeep
 data/analyst_reviews/*
 !data/analyst_reviews/.gitkeep
+data/knowledge/*
+!data/knowledge/.gitkeep
+!data/knowledge/*/
+data/knowledge/*/*
+!data/knowledge/*/.gitkeep
 *.db
 *.sqlite
 *.sqlite3

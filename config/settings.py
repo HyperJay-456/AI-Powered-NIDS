@@ -22,6 +22,9 @@ SAVED_MODELS_DIR: Path = MODELS_DIR / "saved"
 EVALUATIONS_DIR: Path = MODELS_DIR / "evaluations"
 ANALYSES_DIR: Path = DATA_DIR / "analyses"
 ANALYST_REVIEWS_DIR: Path = DATA_DIR / "analyst_reviews"
+KNOWLEDGE_DIR: Path = DATA_DIR / "knowledge"
+MITRE_ATTACK_DIR: Path = KNOWLEDGE_DIR / "mitre_attack"
+MAPPINGS_DIR: Path = KNOWLEDGE_DIR / "mappings"
 LOGS_DIR: Path = BASE_DIR / "logs"
 SRC_DIR: Path = BASE_DIR / "src"
 
@@ -253,6 +256,9 @@ class AppConfig:
     evaluations_dir: Path = EVALUATIONS_DIR
     analyses_dir: Path = ANALYSES_DIR
     analyst_reviews_dir: Path = ANALYST_REVIEWS_DIR
+    knowledge_dir: Path = KNOWLEDGE_DIR
+    mitre_attack_dir: Path = MITRE_ATTACK_DIR
+    mappings_dir: Path = MAPPINGS_DIR
     logs_dir: Path = LOGS_DIR
     src_dir: Path = SRC_DIR
 
@@ -274,6 +280,9 @@ class AppConfig:
             self.evaluations_dir,
             self.analyses_dir,
             self.analyst_reviews_dir,
+            self.knowledge_dir,
+            self.mitre_attack_dir,
+            self.mappings_dir,
             self.logs_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
