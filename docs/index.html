@@ -3,132 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark light">
-  <title>AI-Powered NIDS — Network Intrusion Detection System</title>
-  <meta name="description" content="Production-grade AI-Powered Network Intrusion Detection System utilizing Machine Learning (LinearSVC, MLP, Decision Tree) on the CIC-IDS-2017 benchmark dataset with MITRE ATT&CK integration and forensic reporting.">
+  <meta name="color-scheme" content="dark">
+  <title>CYBER-NIDS — Network Intrusion Detection & Security Operations Platform</title>
+  <meta name="description" content="Production-ready Network Intrusion Detection System utilizing Machine Learning (LinearSVC, MLP, Decision Tree) on the CIC-IDS-2017 benchmark dataset with MITRE ATT&CK integration and digital forensic reporting.">
   <meta name="author" content="HyperJay-456">
-  <meta property="og:title" content="AI-Powered Network Intrusion Detection System">
-  <meta property="og:description" content="Production-ready local-first multi-algorithm ML NIDS for network cyber threat detection and forensic evidence generation.">
+  <meta property="og:title" content="CYBER-NIDS — Network Intrusion Detection System">
+  <meta property="og:description" content="Production-ready local-first multi-algorithm ML NIDS for network threat classification and verifiable forensic evidence generation.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://hyperjay-456.github.io/AI-Powered-NIDS/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: dark;
-      --bg-base: #0a0d14;
-      --bg-surface: #101622;
-      --bg-surface-elevated: #161e2e;
-      --bg-surface-hover: #1e293b;
-      --border-subtle: #1e2838;
-      --border-accent: rgba(0, 229, 255, 0.3);
-      --text-main: #f0f6fc;
+      --bg-main: #080c14;
+      --bg-secondary: #0d1322;
+      --card-bg: rgba(13, 19, 34, 0.78);
+      --card-bg-elevated: rgba(18, 26, 46, 0.88);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(99, 102, 241, 0.35);
+      --border-cyan: rgba(6, 182, 212, 0.35);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #06b6d4;
+      --accent-violet: #a855f7;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-dim: #64748b;
-      --accent-cyan: #00e5ff;
-      --accent-blue: #38bdf8;
-      --accent-purple: #a855f7;
-      --accent-green: #10b981;
-      --accent-red: #f43f5e;
-      --accent-amber: #f59e0b;
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: 'Fira Code', Consolas, "Courier New", monospace;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', Consolas, "Courier New", monospace;
       --max-width: 1240px;
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 16px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; background-color: var(--bg-base); color: var(--text-main); font-family: var(--font-sans); line-height: 1.6; }
-    body { min-height: 100vh; overflow-x: hidden; background: radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.08) 0%, rgba(10, 13, 20, 1) 70%); }
-    a { color: var(--accent-cyan); text-decoration: none; transition: all 0.2s ease; }
-    a:hover { text-decoration: underline; color: #5eead4; }
+    html { scroll-behavior: smooth; background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-sans); line-height: 1.6; }
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 90% 20%, rgba(6, 182, 212, 0.10), transparent 60%),
+        radial-gradient(ellipse 50% 30% at 10% 40%, rgba(168, 85, 247, 0.08), transparent 50%),
+        var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+    }
+    a { color: var(--accent); text-decoration: none; transition: all 0.2s ease; }
+    a:hover { color: #5eead4; text-decoration: underline; }
 
     /* Layout */
     .container { width: 100%; max-width: var(--max-width); margin: 0 auto; padding: 0 1.5rem; }
-    .section { padding: 4.5rem 0; border-bottom: 1px solid var(--border-subtle); }
-    .section-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.75rem; color: #fff; display: flex; align-items: center; gap: 0.75rem; }
-    .section-desc { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 780px; }
+    .section { padding: 5rem 0; border-bottom: 1px solid var(--border-subtle); }
+    .section-title { font-size: 2.1rem; font-weight: 800; margin-bottom: 0.75rem; color: #fff; display: flex; align-items: center; gap: 0.75rem; letter-spacing: -0.02em; }
+    .section-desc { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.75rem; max-width: 820px; line-height: 1.7; }
 
-    /* Navigation */
-    header.site-header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px); background: rgba(10, 13, 20, 0.85); border-bottom: 1px solid var(--border-subtle); padding: 1rem 0; }
+    /* Header */
+    header.site-header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: rgba(8, 12, 20, 0.85); border-bottom: 1px solid var(--border-subtle); padding: 1.1rem 0; }
     .nav-inner { display: flex; justify-content: space-between; align-items: center; }
-    .brand { display: flex; align-items: center; gap: 0.75rem; font-weight: 700; font-size: 1.15rem; color: #fff; }
-    .brand-icon { width: 34px; height: 34px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); display: grid; place-items: center; color: #0a0d14; font-weight: 800; font-size: 1.1rem; }
+    .brand { display: flex; align-items: center; gap: 0.85rem; font-weight: 800; font-size: 1.2rem; color: #fff; letter-spacing: 0.05em; text-decoration: none !important; }
+    .brand-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--primary), var(--accent)); display: grid; place-items: center; color: #ffffff; font-weight: 800; font-size: 1.15rem; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
     .nav-links { display: flex; align-items: center; gap: 1.75rem; list-style: none; }
-    .nav-links a { color: var(--text-muted); font-size: 0.95rem; font-weight: 500; }
+    .nav-links a { color: var(--text-muted); font-size: 0.95rem; font-weight: 500; transition: color 0.2s ease; }
     .nav-links a:hover { color: #fff; text-decoration: none; }
-    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; }
-    .btn-primary { background: linear-gradient(135deg, #00e5ff, #0284c7); color: #050b14; text-decoration: none !important; box-shadow: 0 4px 14px rgba(0, 229, 255, 0.25); }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4); }
-    .btn-outline { background: var(--bg-surface); border-color: var(--border-subtle); color: var(--text-main); text-decoration: none !important; }
-    .btn-outline:hover { background: var(--bg-surface-elevated); border-color: var(--accent-cyan); }
-    .badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-    .badge-cyan { background: rgba(0, 229, 255, 0.12); color: var(--accent-cyan); border: 1px solid rgba(0, 229, 255, 0.25); }
-    .badge-green { background: rgba(16, 185, 129, 0.12); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.25); }
+    
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.35rem; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; font-family: var(--font-sans); }
+    .btn-primary { background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%); color: #ffffff; text-decoration: none !important; box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.55); color: #fff; }
+    .btn-secondary { background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(99, 102, 241, 0.15)); border: 1px solid var(--border-accent); color: #fff; text-decoration: none !important; }
+    .btn-secondary:hover { transform: translateY(-2px); border-color: var(--accent); color: #fff; background: rgba(6, 182, 212, 0.25); }
+    .btn-outline { background: var(--card-bg); border-color: var(--border-subtle); color: var(--text-main); text-decoration: none !important; backdrop-filter: blur(10px); }
+    .btn-outline:hover { background: var(--card-bg-elevated); border-color: var(--primary); color: #fff; }
+
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-primary { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+    
+    /* Live Pulse Dot */
+    .nids-pulse-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--accent-green); box-shadow: 0 0 10px rgba(16, 185, 129, 0.8); animation: nidsPulse 2s infinite ease-in-out; }
+    @keyframes nidsPulse {
+      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px rgba(16, 185, 129, 0.8); }
+      50% { transform: scale(1.3); opacity: 0.7; box-shadow: 0 0 16px rgba(16, 185, 129, 1); }
+    }
 
     /* Hero */
-    .hero { padding: 5rem 0 3.5rem; text-align: center; }
-    .hero-pill { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--bg-surface); border: 1px solid var(--border-accent); padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.85rem; margin-bottom: 1.5rem; }
-    .hero h1 { font-size: 3.25rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1.25rem; }
-    .hero h1 span.gradient { background: linear-gradient(135deg, #ffffff 30%, var(--accent-cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .hero p { font-size: 1.25rem; color: var(--text-muted); max-width: 820px; margin: 0 auto 2.25rem; }
-    .hero-actions { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 3.5rem; }
+    .hero { padding: 5.5rem 0 4rem; text-align: center; }
+    .hero-pill { display: inline-flex; align-items: center; gap: 0.65rem; background: var(--card-bg); border: 1px solid var(--border-accent); padding: 0.4rem 1rem; border-radius: 9999px; font-size: 0.85rem; margin-bottom: 1.75rem; backdrop-filter: blur(12px); }
+    .hero h1 { font-size: 3.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.4rem; }
+    .hero h1 span.gradient { background: linear-gradient(135deg, #ffffff 20%, #a5b4fc 60%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 1.25rem; color: var(--text-muted); max-width: 840px; margin: 0 auto 2.5rem; line-height: 1.7; }
+    .hero-actions { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 4rem; }
 
-    /* KPI Bar */
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; margin-top: 1rem; }
-    .kpi-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem; text-align: center; transition: all 0.25s ease; }
-    .kpi-card:hover { transform: translateY(-3px); border-color: var(--border-accent); box-shadow: 0 8px 24px rgba(0, 229, 255, 0.08); }
-    .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; font-family: var(--font-mono); margin-bottom: 0.25rem; }
-    .kpi-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+    /* KPI Grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; margin-top: 1rem; }
+    .kpi-card { background: var(--card-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.6rem 1.25rem; text-align: center; transition: all 0.25s ease; position: relative; overflow: hidden; }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: 0.7; }
+    .kpi-card:hover { transform: translateY(-3px); border-color: var(--border-accent); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15); }
+    .kpi-value { font-size: 2.3rem; font-weight: 800; color: #fff; font-family: var(--font-mono); margin-bottom: 0.35rem; }
+    .kpi-label { font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 
-    /* Grid & Cards */
+    /* Cards */
     .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; }
-    .card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.75rem; transition: border-color 0.2s ease; position: relative; overflow: hidden; }
-    .card:hover { border-color: var(--border-accent); }
-    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
-    .card-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); display: grid; place-items: center; font-size: 1.3rem; margin-bottom: 1rem; }
-    .card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff; }
-    .card p { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
-    .tag-list { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 1.25rem; }
-    .tag { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); background: var(--bg-surface-elevated); color: var(--text-muted); font-family: var(--font-mono); border: 1px solid var(--border-subtle); }
+    .card { background: var(--card-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 2rem; transition: all 0.25s ease; position: relative; }
+    .card:hover { transform: translateY(-3px); border-color: var(--border-accent); box-shadow: 0 12px 35px rgba(99, 102, 241, 0.12); }
+    .card-icon { width: 48px; height: 48px; border-radius: var(--radius-sm); display: grid; place-items: center; font-size: 1.4rem; margin-bottom: 1.25rem; }
+    .card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.6rem; color: #fff; letter-spacing: -0.01em; }
+    .card p { font-size: 0.95rem; color: var(--text-muted); line-height: 1.65; }
+    .tag-list { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.35rem; }
+    .tag { font-size: 0.75rem; padding: 0.25rem 0.55rem; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.04); color: #cbd5e1; font-family: var(--font-mono); border: 1px solid var(--border-subtle); }
 
-    /* Interactive Tab Showcase */
-    .tabs-wrapper { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
-    .tab-nav { display: flex; overflow-x: auto; background: var(--bg-base); border-bottom: 1px solid var(--border-subtle); }
-    .tab-btn { padding: 1rem 1.5rem; background: none; border: none; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem; }
-    .tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.02); }
-    .tab-btn.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); background: var(--bg-surface); }
-    .tab-pane { display: none; padding: 2.25rem; }
+    /* Tab Showcase */
+    .tabs-wrapper { background: var(--card-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
+    .tab-nav { display: flex; overflow-x: auto; background: rgba(5, 8, 15, 0.9); border-bottom: 1px solid var(--border-subtle); }
+    .tab-btn { padding: 1.1rem 1.6rem; background: none; border: none; color: var(--text-muted); font-weight: 600; font-size: 0.92rem; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-sans); }
+    .tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.03); }
+    .tab-btn.active { color: #a5b4fc; border-bottom-color: var(--primary); background: rgba(99, 102, 241, 0.08); }
+    .tab-pane { display: none; padding: 2.5rem; }
     .tab-pane.active { display: block; animation: fadeIn 0.25s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
     /* Code Block */
-    .code-box { background: #05070a; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; font-family: var(--font-mono); font-size: 0.9rem; position: relative; margin: 1.25rem 0; overflow-x: auto; }
-    .code-box pre { color: #e2e8f0; line-height: 1.5; }
+    .code-box { background: #04060a; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; font-family: var(--font-mono); font-size: 0.9rem; position: relative; margin: 1.25rem 0; overflow-x: auto; }
+    .code-box pre { color: #e2e8f0; line-height: 1.55; }
     .code-comment { color: #64748b; }
-    .code-cmd { color: var(--accent-cyan); }
-    .copy-btn { position: absolute; top: 0.75rem; right: 0.75rem; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: var(--radius-sm); cursor: pointer; }
-    .copy-btn:hover { color: #fff; border-color: var(--accent-cyan); }
+    .code-cmd { color: #38bdf8; font-weight: 500; }
+    .copy-btn { position: absolute; top: 0.75rem; right: 0.75rem; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 0.75rem; padding: 0.35rem 0.7rem; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-sans); font-weight: 600; transition: all 0.2s ease; }
+    .copy-btn:hover { color: #fff; border-color: var(--primary); background: var(--primary); }
 
     /* Table */
-    .table-responsive { width: 100%; overflow-x: auto; margin-top: 1.5rem; }
+    .table-responsive { width: 100%; overflow-x: auto; margin-top: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
     table.data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; }
-    table.data-table th { background: var(--bg-surface-elevated); padding: 0.85rem 1rem; color: #fff; font-weight: 600; border-bottom: 2px solid var(--border-subtle); }
-    table.data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); }
-    table.data-table tr:hover td { background: rgba(255, 255, 255, 0.015); color: #fff; }
+    table.data-table th { background: rgba(13, 19, 34, 0.95); padding: 1rem 1.25rem; color: #fff; font-weight: 600; border-bottom: 2px solid var(--border-subtle); }
+    table.data-table td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); }
+    table.data-table tr:hover td { background: rgba(255, 255, 255, 0.02); color: #fff; }
 
     /* Footer */
-    footer.site-footer { padding: 4rem 0 2rem; background: var(--bg-base); border-top: 1px solid var(--border-subtle); text-align: center; }
-    .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 1.5rem; list-style: none; }
+    footer.site-footer { padding: 4.5rem 0 2.5rem; background: #05080f; border-top: 1px solid var(--border-subtle); text-align: center; }
+    .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 1.5rem; list-style: none; flex-wrap: wrap; }
     .footer-links a { color: var(--text-muted); font-size: 0.95rem; }
-    .footer-links a:hover { color: var(--accent-cyan); }
+    .footer-links a:hover { color: var(--accent); }
     .footer-credit { color: var(--text-dim); font-size: 0.85rem; }
 
     @media (max-width: 768px) {
-      .hero h1 { font-size: 2.25rem; }
+      .hero h1 { font-size: 2.3rem; }
       .hero p { font-size: 1.05rem; }
       .nav-links { display: none; }
       .card-grid { grid-template-columns: 1fr; }
@@ -142,14 +168,14 @@
     <div class="container nav-inner">
       <a href="#" class="brand">
         <div class="brand-icon">🛡️</div>
-        <span>AI-Powered NIDS</span>
-        <span class="badge badge-cyan">v1.0.0</span>
+        <span>CYBER-NIDS</span>
+        <span class="badge badge-cyan"><span class="nids-pulse-dot"></span> v1.0.0 Production</span>
       </a>
       <ul class="nav-links">
         <li><a href="#overview">Overview</a></li>
         <li><a href="#algorithms">Algorithms</a></li>
-        <li><a href="#views">8 Dashboard Views</a></li>
-        <li><a href="#safeguards">Security</a></li>
+        <li><a href="#views">8 Console Views</a></li>
+        <li><a href="#safeguards">Security & Governance</a></li>
         <li><a href="#quickstart">Quickstart</a></li>
       </ul>
       <a href="https://github.com/HyperJay-456/AI-Powered-NIDS" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
@@ -163,25 +189,27 @@
   <main>
     <section class="hero container" id="overview">
       <div class="hero-pill">
-        <span class="badge badge-green">Production Ready</span>
-        <span>Local-First Cybersecurity Engineering • 100% Offline</span>
+        <span class="nids-pulse-dot"></span>
+        <span style="font-weight: 600; color: #cbd5e1;">Enterprise SOC Operations</span>
+        <span style="color: var(--text-dim);">•</span>
+        <span style="color: var(--text-muted);">Tri-Model Consensus • 100% Air-Gapped Offline</span>
       </div>
-      <h1>AI-Powered <span class="gradient">Network Intrusion Detection</span> System</h1>
-      <p>A production-grade, multi-algorithm machine learning system engineered for academic defense and enterprise security research. Features offline batch inference, cross-model consensus, MITRE ATT&CK enrichment, and cryptographically verified digital evidence packaging on the CIC-IDS-2017 benchmark dataset.</p>
+      <h1>Next-Gen <span class="gradient">Network Threat Detection</span> Console</h1>
+      <p>A production-engineered cybersecurity operations platform for statistical network flow telemetry analysis, multi-class threat classification, MITRE ATT&CK contextualization, and cryptographically verified digital evidence packaging on the benchmark CIC-IDS-2017 corpus.</p>
       <div class="hero-actions">
         <a href="#quickstart" class="btn btn-primary">⚡ Quickstart Launcher</a>
+        <a href="#quickstart" class="btn btn-secondary">🚀 1-Click Demo Pipeline</a>
         <a href="https://github.com/HyperJay-456/AI-Powered-NIDS" target="_blank" rel="noopener noreferrer" class="btn btn-outline">📂 Explore Source Code</a>
-        <a href="#views" class="btn btn-outline">🖥️ Preview 8 Views</a>
       </div>
 
       <!-- Real Telemetry KPI Grid -->
       <div class="kpi-grid">
         <div class="kpi-card">
-          <div class="kpi-value" style="color: var(--accent-cyan);">2.8M+</div>
-          <div class="kpi-label">Flows Benchmark Scope</div>
+          <div class="kpi-value" style="color: var(--accent);">2.8M+</div>
+          <div class="kpi-label">Benchmark Flow Scope</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-value" style="color: var(--accent-blue);">3</div>
+          <div class="kpi-value" style="color: #a5b4fc;">3</div>
           <div class="kpi-label">Authorized ML Estimators</div>
         </div>
         <div class="kpi-card">
@@ -189,7 +217,7 @@
           <div class="kpi-label">Automated Tests Passed (0 Regr.)</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-value" style="color: var(--accent-purple);">15</div>
+          <div class="kpi-value" style="color: var(--accent-violet);">15</div>
           <div class="kpi-label">Classified Attack Families</div>
         </div>
         <div class="kpi-card">
@@ -201,14 +229,14 @@
 
     <!-- The 3 Authorized ML Algorithms -->
     <section class="section container" id="algorithms">
-      <h2 class="section-title">🤖 Exactly Three Authorized Algorithms</h2>
-      <p class="section-desc">By architectural mandate, classification is restricted strictly to three complementary algorithmic paradigms. No fourth algorithm, ad-hoc voting ensembles, or external cloud inference endpoints are permitted.</p>
+      <h2 class="section-title">📐 Exactly Three Authorized Algorithms</h2>
+      <p class="section-desc">By architectural mandate, classification is restricted strictly to three complementary algorithmic paradigms. No ad-hoc voting ensembles, unvalidated neural black-boxes, or cloud endpoints are permitted.</p>
 
       <div class="card-grid">
         <div class="card">
-          <div class="card-icon" style="background: rgba(0, 229, 255, 0.12); color: var(--accent-cyan);">📐</div>
+          <div class="card-icon" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc;">📐</div>
           <h3>Support Vector Machine (LinearSVC)</h3>
-          <p>Constructs optimal maximum-margin separating hyperplanes in standardized continuous feature spaces using dual coordinate descent formulation. Well-suited for high-dimensional boundary isolation between benign baselines and volumetric flooding.</p>
+          <p>Constructs optimal maximum-margin separating hyperplanes in standardized continuous feature spaces using dual coordinate descent formulation. Well-suited for high-dimensional boundary isolation between benign traffic and volumetric flooding.</p>
           <div class="tag-list">
             <span class="tag">LinearSVC</span>
             <span class="tag">StandardScaler</span>
@@ -218,7 +246,7 @@
         </div>
 
         <div class="card">
-          <div class="card-icon" style="background: rgba(168, 85, 247, 0.12); color: var(--accent-purple);">🧠</div>
+          <div class="card-icon" style="background: rgba(168, 85, 247, 0.15); color: var(--accent-violet);">🧠</div>
           <h3>Multilayer Perceptron (MLPClassifier)</h3>
           <p>Feedforward artificial neural network with adaptive mini-batch iteration (<code>partial_fit</code>), Adam stochastic optimization, and genuine training-loss convergence stopping. Discovers complex non-linear interactions across subtle temporal features.</p>
           <div class="tag-list">
@@ -230,7 +258,7 @@
         </div>
 
         <div class="card">
-          <div class="card-icon" style="background: rgba(16, 185, 129, 0.12); color: var(--accent-green);">🌲</div>
+          <div class="card-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">🌲</div>
           <h3>Decision Tree (CART Classifier)</h3>
           <p>Interpretable, deterministic recursive binary splitting on raw physical flow attributes (packet lengths, inter-arrival times, port categories) utilizing Gini impurity criteria. Delivers transparent rule paths for forensic verification.</p>
           <div class="tag-list">
@@ -245,13 +273,13 @@
 
     <!-- Interactive 8 Dashboard Views Showcase -->
     <section class="section container" id="views">
-      <h2 class="section-title">🖥️ Interactive 8-Route Cybersecurity Console</h2>
+      <h2 class="section-title">🖥️ 8 Modular Security Operations Views</h2>
       <p class="section-desc">Streamlit-powered presentation layer styled with custom dark cybersecurity tokens, persistent sidebar navigation, atomic metric cards, and responsive data views.</p>
 
       <div class="tabs-wrapper">
         <div class="tab-nav" role="tablist">
           <button class="tab-btn active" role="tab" aria-selected="true" data-tab="tab-overview">01. Overview</button>
-          <button class="tab-btn" role="tab" aria-selected="false" data-tab="tab-traffic">02. Traffic Ingestion</button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="tab-traffic">02. Traffic Analysis</button>
           <button class="tab-btn" role="tab" aria-selected="false" data-tab="tab-detection">03. Detection Center</button>
           <button class="tab-btn" role="tab" aria-selected="false" data-tab="tab-laboratory">04. Model Laboratory</button>
           <button class="tab-btn" role="tab" aria-selected="false" data-tab="tab-threat">05. Threat Intelligence</button>
@@ -261,7 +289,7 @@
         </div>
 
         <div class="tab-pane active" id="tab-overview">
-          <h3>01. Overview (Executive Telemetry Console)</h3>
+          <h3>01. Overview (Security Operations Center Console)</h3>
           <p>High-level system health dashboard, live directory inventory, benchmark checklist, and production model registry status. Strictly preserves genuine empty states when unpopulated by user uploads.</p>
           <div class="tag-list">
             <span class="tag">Pipeline Health Checker</span>
@@ -271,7 +299,7 @@
         </div>
 
         <div class="tab-pane" id="tab-traffic">
-          <h3>02. Traffic Analysis (Validated CSV Ingestion)</h3>
+          <h3>02. Traffic Analysis (Validated Flow Ingestion)</h3>
           <p>Chunked network-flow CSV streaming (50,000 rows/chunk), structural delimiter and encoding validation, disk-backed duplicate fingerprinting via SHA-256, and interactive schema inspection (no PCAP or live packet sniffing).</p>
           <div class="tag-list">
             <span class="tag">Chunked Streaming</span>
@@ -281,7 +309,7 @@
         </div>
 
         <div class="tab-pane" id="tab-detection">
-          <h3>03. Detection Center (Operational Batch Inference)</h3>
+          <h3>03. Detection Center (Tri-Model Consensus Inference)</h3>
           <p>CSV-based batch inference engine supporting feature alignment verification, single- or comparative multi-model evaluation across chunks of 10,000 rows, and algorithm disagreement analysis (unanimous agreement vs. majority vs. divergence).</p>
           <div class="tag-list">
             <span class="tag">Batch Inference (10k rows)</span>
@@ -400,23 +428,25 @@
 
       <div class="card-grid">
         <div class="card">
-          <div class="card-icon" style="background: rgba(0, 229, 255, 0.12); color: var(--accent-cyan);">🚀</div>
+          <div class="card-icon" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc;">🚀</div>
           <h3>One-Click Launch Scripts</h3>
           <p>Native Windows batch files configured for rapid workstation execution:</p>
           <ul style="margin: 1rem 0 1rem 1.25rem; color: var(--text-muted); font-size: 0.95rem;">
+            <li><strong><code>init_demo.bat</code></strong>: Seeds 1,500 sample benchmark flows, trains the 3 models, and runs detection in ~2s so the console is immediately populated!</li>
             <li><strong><code>start.bat</code></strong>: Verifies <code>.venv</code>, checks port 8501, boots Streamlit server in a dedicated window, and launches your browser.</li>
-            <li><strong><code>stop.bat</code></strong>: Detects and terminates the active NIDS server process tree on port 8501 cleanly.</li>
+            <li><strong><code>stop.bat</code></strong>: Detects and terminates the active NIDS server process tree cleanly.</li>
           </ul>
           <div class="code-box">
-            <button class="copy-btn" onclick="navigator.clipboard.writeText('start.bat')">Copy</button>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText('init_demo.bat\nstart.bat')">Copy</button>
             <pre><span class="code-comment"># Simply double-click in Windows Explorer:</span>
-<span class="code-cmd">start.bat</span>  <span class="code-comment">&lt;-- Launch NIDS</span>
-<span class="code-cmd">stop.bat</span>   <span class="code-comment">&lt;-- Shutdown NIDS</span></pre>
+<span class="code-cmd">init_demo.bat</span>  <span class="code-comment">&lt;-- Pre-populate demo data (optional)</span>
+<span class="code-cmd">start.bat</span>      <span class="code-comment">&lt;-- Launch CYBER-NIDS Console</span>
+<span class="code-cmd">stop.bat</span>       <span class="code-comment">&lt;-- Clean Shutdown</span></pre>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-icon" style="background: rgba(16, 185, 129, 0.12); color: var(--accent-green);">💻</div>
+          <div class="card-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">💻</div>
           <h3>Manual PowerShell Setup</h3>
           <p>For terminal operators and Python environment customization:</p>
           <div class="code-box">
@@ -448,7 +478,7 @@
         <li><a href="https://github.com/HyperJay-456/AI-Powered-NIDS/blob/master/docs/INSTALLATION_GUIDE.md" target="_blank" rel="noopener noreferrer">Installation Guide</a></li>
         <li><a href="https://github.com/HyperJay-456" target="_blank" rel="noopener noreferrer">Author Profile (@HyperJay-456)</a></li>
       </ul>
-      <p class="footer-credit">AI-Powered Network Intrusion Detection System • MIT License • Built for academic defense & cybersecurity research.</p>
+      <p class="footer-credit">CYBER-NIDS Operations Platform • BinaryNbeyond Cosmic Architecture • MIT License • Built for academic defense & cybersecurity research.</p>
     </div>
   </footer>
 

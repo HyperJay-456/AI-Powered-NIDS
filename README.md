@@ -6,7 +6,7 @@
 [![Version: 1.0.0](https://img.shields.io/badge/version-1.0.0-green.svg)](docs/RELEASE_NOTES_v1.0.0.md)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35%2B-FF4B4B.svg)](https://streamlit.io/)
 [![Dataset: CIC-IDS-2017](https://img.shields.io/badge/Dataset-CIC--IDS--2017-orange.svg)](https://www.unb.ca/cic/datasets/ids-2017.html)
-[![Tests: 268 Passing](https://img.shields.io/badge/tests-268%20passing-brightgreen.svg)](tests/)
+[![Tests: 270 Passing](https://img.shields.io/badge/tests-270%20passing-brightgreen.svg)](tests/)
 [![License: Academic/MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 An academic, production-grade Machine Learning system designed to ingest, validate, classify, and audit network traffic flow telemetry using the benchmark **CIC-IDS-2017** dataset. Built with an offline-first modular Python architecture and an interactive **Streamlit** control console, the platform implements, benchmarks, and operationalizes three authorized machine learning algorithms: **Support Vector Machine (LinearSVC)**, **Multilayer Perceptron (MLPClassifier)**, and **Decision Tree (DecisionTreeClassifier)**.

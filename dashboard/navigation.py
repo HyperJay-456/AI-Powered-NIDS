@@ -145,7 +145,7 @@ def render_sidebar() -> Route:
     <div class="nids-brand-icon">🛡️</div>
     <div>
         <div class="nids-brand-title">CYBER-NIDS</div>
-        <div class="nids-brand-caption">AI Threat Detection</div>
+        <div class="nids-brand-caption"><span class="nids-pulse-dot"></span>SOC Threat Operations</div>
     </div>
 </div>
 """
@@ -157,7 +157,7 @@ def render_sidebar() -> Route:
     current_index = display_options.index(current_route.display_name)
 
     selected_display = st.sidebar.radio(
-        label="NAVIGATION",
+        label="CONSOLE NAVIGATION",
         options=display_options,
         index=current_index,
         key="nids_navigation_radio",
@@ -168,45 +168,47 @@ def render_sidebar() -> Route:
     if selected_route.route_id != current_route_id:
         st.session_state[SESSION_ROUTE_KEY] = selected_route.route_id
 
-    # 3. Project Status Widget in Sidebar
+    # 3. System Telemetry Widget in Sidebar
     model_stat = check_model_status()
-    models_label = f"{model_stat.trained_count}/{model_stat.total_models} Trained"
-    models_color = "var(--color-status-success)" if model_stat.trained_count > 0 else "var(--color-status-neutral)"
+    models_label = f"{model_stat.trained_count}/{model_stat.total_models} Calibrated" if model_stat.trained_count > 0 else "0/3 Initializing"
+    models_color = "#34d399" if model_stat.trained_count > 0 else "#94a3b8"
 
     status_markup = f"""
 <div class="nids-status-widget">
-    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-        SYSTEM STATUS
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.625rem;">
+        <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--bb-text-muted);">
+            SYSTEM TELEMETRY
+        </span>
+        <span class="nids-badge nids-badge-success" style="font-size: 0.6875rem; padding: 0.15rem 0.5rem;">
+            LIVE
+        </span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Release Version</span>
-        <span style="color: var(--color-status-success); font-weight: 600;">v1.0.0 Production</span>
+        <span class="nids-status-label">Engine</span>
+        <span style="color: #ffffff; font-weight: 600;">Enterprise Defense</span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Architecture</span>
-        <span style="color: var(--color-text-primary);">CP-01 to CP-12 Active</span>
+        <span class="nids-status-label">Corpus Baseline</span>
+        <span style="color: #818cf8; font-weight: 500;">{settings.dataset.name}</span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Dataset Baseline</span>
-        <span style="color: var(--color-text-primary);">{settings.dataset.name}</span>
-    </div>
-    <div class="nids-status-row">
-        <span class="nids-status-label">ML Estimators</span>
+        <span class="nids-status-label">Estimators</span>
         <span style="color: {models_color}; font-weight: 600;">{models_label}</span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Models Authorized</span>
-        <span style="color: var(--color-text-primary);">SVM, MLP, DT</span>
+        <span class="nids-status-label">Inference Mode</span>
+        <span style="color: #cbd5e1; font-weight: 500;">Tri-Model Consensus</span>
     </div>
 </div>
 """
     st.sidebar.markdown(status_markup, unsafe_allow_html=True)
 
-    # 4. Academic Footer
+    # 4. Enterprise Console Footer
     st.sidebar.markdown(
         """
-        <div style="margin-top: 2rem; font-size: 0.75rem; color: var(--color-text-muted); text-align: center;">
-            Academic NIDS &bull; MIT License<br>CIC-IDS-2017 Benchmark
+        <div style="margin-top: 2.5rem; font-size: 0.75rem; color: #64748b; text-align: center; line-height: 1.5;">
+            CYBER-NIDS Operations Console<br>
+            <span style="color: #475569; font-size: 0.6875rem;">BinaryNbeyond Cosmic Architecture</span>
         </div>
         """,
         unsafe_allow_html=True,

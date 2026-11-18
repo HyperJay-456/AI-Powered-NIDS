@@ -1107,18 +1107,18 @@ def render() -> None:
     """Render the master Model Laboratory view."""
     page_header(
         title="Model Training & Evaluation Laboratory",
-        subtitle="Zero-retraining evaluation, multi-model benchmarking & gated holdout verification",
+        subtitle="Zero-retraining evaluation protocol, multi-model benchmarking & gated holdout verification",
         icon="🧪",
         badges=[
-            ("CP-07: Active", "success"),
-            ("3 Authorized Algorithms", "info"),
-            ("Validation Selection & Gated Test Holdout", "neutral"),
+            ("Governance: Zero Retraining", "success"),
+            ("3 Authorized Estimators", "info"),
+            ("Validation Selection & Gated Holdout", "neutral"),
         ],
     )
 
     # Architectural Scope & Stage Guardrail Notice
     info_panel(
-        title="CP-07 Evaluation Protocol & Zero-Retraining Invariant",
+        title="Production Evaluation Protocol & Zero-Retraining Invariant",
         message=(
             "The Model Evaluation Laboratory evaluates existing, verified production model artifacts without refitting or updating. "
             "Validation partition results inform model comparison, diagnostic breakdown, and candidate selection. "

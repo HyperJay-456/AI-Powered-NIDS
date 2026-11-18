@@ -55,17 +55,19 @@ def render() -> None:
 
     # Page Header
     badge_variant = "success" if detection_runs else ("info" if eligible_models else "neutral")
-    badge_text = f"{len(detection_runs)} Analysis Runs" if detection_runs else (f"{len(eligible_models)} Models Ready" if eligible_models else "Awaiting Models")
+    badge_text = f"{len(detection_runs)} Analysis Runs" if detection_runs else (f"{len(eligible_models)} Models Calibrated" if eligible_models else "Awaiting Calibrated Models")
 
     page_header(
         title="Intrusion Detection Center",
-        subtitle="Offline CSV-based network traffic inference, model consensus triage, and forensic analysis",
+        subtitle="Batch network traffic flow classification, multi-model consensus triage, and disagreement analysis.",
         icon="⚡",
-        badge_text=badge_text,
-        badge_variant=badge_variant,
+        badges=[
+            ("Engine: Tri-Model Consensus", "info"),
+            (badge_text, badge_variant),
+        ],
     )
 
-    tab_console, tab_history = st.tabs(["⚡ Live Detection Console", "📦 Detection Run History & Audit"])
+    tab_console, tab_history = st.tabs(["⚡ Detection Workbench", "📦 Detection Run Archive & Audit"])
 
     with tab_console:
         _render_detection_console(eligible_models, detection_runs)

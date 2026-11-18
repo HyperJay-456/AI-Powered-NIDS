@@ -45,7 +45,7 @@ def render() -> None:
         title="Threat Intelligence & Attack Context",
         subtitle="MITRE ATT&CK Enterprise v20.1 knowledge integration, candidate mapping review, and evidence-aware context",
         icon="🌐",
-        badges=[("Checkpoint CP-10", "info"), ("ATT&CK v20.1 Enterprise", "success")],
+        badges=[("Enterprise Knowledgebase", "info"), ("MITRE ATT&CK v20.1", "success")],
     )
 
     # --------------------------------------------------------------------------

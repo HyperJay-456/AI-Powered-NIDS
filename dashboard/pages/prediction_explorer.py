@@ -35,7 +35,7 @@ def render() -> None:
         title="Prediction Explorer & Analyst Review",
         subtitle="Forensic traffic classification analysis, model disagreement exploration, and human-in-the-loop triage",
         icon="🔍",
-        badges=[("Checkpoint CP-09", "info"), ("Analyst Review Subsystem", "success")],
+        badges=[("Triage Workbench", "info"), ("Analyst Journal Active", "success")],
     )
 
     registry = ExplorerRegistry()

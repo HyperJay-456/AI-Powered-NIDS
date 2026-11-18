@@ -106,13 +106,12 @@ def _render_header(ingested_count: int) -> None:
     status_variant = "success" if ingested_count > 0 else "neutral"
 
     page_header(
-        title="Traffic Analysis & Data Explorer",
-        subtitle="Upload, validate and explore network flow CSV datasets for cybersecurity analysis.",
+        title="Traffic Analysis & Telemetry Explorer",
+        subtitle="Ingest, validate, and inspect network flow telemetry datasets with cryptographic byte integrity.",
         icon="📊",
         badges=[
-            ("Mode: Local / Offline", "neutral"),
-            ("Dataset Source: User-Uploaded", "neutral"),
-            ("Supported Format: CSV", "neutral"),
+            ("Flow Ingestion: Active", "info"),
+            ("Format: Flow CSV", "neutral"),
             (status_text, status_variant),
         ],
     )

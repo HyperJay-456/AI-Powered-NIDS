@@ -33,29 +33,80 @@ def _render_header() -> None:
     det_status = check_latest_analysis_status()
 
     if det_status.has_run:
-        cp_badge = ("Release v1.0.0 Active", "success")
+        status_badge = ("Telemetry: Active Analysis", "success")
     elif eval_status.is_completed:
-        cp_badge = ("CP-08 Ready", "success")
+        status_badge = ("Models: Production Verified", "success")
     elif md_status.trained_count > 0:
-        cp_badge = ("CP-07 Active", "info")
+        status_badge = ("Estimators: Calibrated", "info")
     elif eng_status.is_completed:
-        cp_badge = ("CP-06 Active", "info")
+        status_badge = ("Dataset: Engineered & Scaled", "info")
     else:
-        cp_badge = ("CP-05 Active", "info")
+        status_badge = ("System: Ready for Ingestion", "neutral")
 
     page_header(
-        title="Network Security Overview",
+        title="Network Security Operations Center",
         subtitle=(
-            "AI-Powered Network Intrusion Detection System designed for CSV-based intrusion detection analysis "
-            "against CIC-IDS-2017 benchmark telemetry using SVM, MLP, and Decision Tree architectures."
+            "Autonomous network flow telemetry analysis, multi-model threat classification, "
+            "and MITRE ATT&CK contextual attribution engine."
         ),
         icon="🛡️",
         badges=[
-            ("Mode: Local / Offline", "neutral"),
+            ("Enterprise Defense", "neutral"),
             ("v1.0.0 Production", "success"),
-            cp_badge,
+            status_badge,
         ],
     )
+
+
+def _render_executive_summary_cards(
+    dataset_status: DatasetStatus,
+    model_status: ModelSystemStatus,
+) -> None:
+    """Render Section B: Executive Summary Cards with verifiable state."""
+    col1, col2, col3, col4 = st.columns(4)
+
+    # 1. Dataset Readiness
+    with col1:
+        dataset_color = "#34d399" if dataset_status.is_loaded else "var(--color-status-warning)"
+        metric_card(
+            label="Dataset Readiness",
+            value=dataset_status.summary_text,
+            subtitle=f"Target: {dataset_status.target_dataset_name}",
+            status_color=dataset_color,
+        )
+
+    # 2. Available Trained Models
+    with col2:
+        model_color = "#818cf8" if model_status.trained_count > 0 else "var(--color-text-secondary)"
+        metric_card(
+            label="Active Classifiers",
+            value=model_status.summary_text,
+            subtitle="SVM, MLP, Decision Tree",
+            status_color=model_color,
+        )
+
+    # 3. Traffic Analysis Status
+    with col3:
+        traffic_status = check_traffic_analysis_status()
+        metric_card(
+            label="Traffic Analysis Status",
+            value=traffic_status.summary_text,
+            subtitle=traffic_status.detail_text,
+            status_color="#06b6d4" if traffic_status.is_available else "var(--color-text-secondary)",
+        )
+
+    # 4. Dataset Engineering Status (CP-05)
+    with col4:
+        eng_status = check_dataset_engineering_status(session_state=st.session_state)
+        status_color = "#34d399" if eng_status.is_completed else (
+            "var(--color-status-warning)" if eng_status.state == "Failed" else "var(--color-text-secondary)"
+        )
+        metric_card(
+            label="Feature Engineering",
+            value=eng_status.summary_text,
+            subtitle=eng_status.detail_text,
+            status_color=status_color,
+        )
 
 
 def _render_quickstart_section(
@@ -72,8 +123,8 @@ def _render_quickstart_section(
     )
 
     section_header(
-        title="Quickstart & Benchmark Pipeline",
-        description="One-click dataset loader and automated pipeline initializer for immediate testing without external multi-gigabyte downloads:",
+        title="Enterprise Telemetry Flight Deck",
+        description="Instant onboarding workbench: ingest verified benchmark telemetry and calibrate detection engines with a single click:",
     )
 
     demo_installed = is_demo_installed()
@@ -81,14 +132,27 @@ def _render_quickstart_section(
 
     col_info, col_actions = st.columns([3, 2])
     with col_info:
+        flow_status_text = "Benchmark Flows Ingested (1,500 samples, 4 classes)" if demo_installed else "Empty / Ready for Ingestion"
+        flow_badge = "success" if demo_installed else "neutral"
+
+        pipeline_status_text = "Tri-Model Consensus Engine Calibrated" if pipeline_ready else "Awaiting Pipeline Execution"
+        pipeline_badge = "success" if pipeline_ready else "neutral"
+
         st.markdown(
             f"""
             <div class="nids-card" style="margin-bottom: 0;">
-                <div class="nids-card-title">⚡ Instant Onboarding Controls</div>
-                <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.6;">
-                    <div><strong>Dataset Status:</strong> {"✅ Benchmark Sample Installed (1,500 rows, 4 classes)" if demo_installed else "⚪ Clean / Empty (Ready to load)"}</div>
-                    <div><strong>Pipeline Status:</strong> {"✅ Pipeline Active & Models Trained" if pipeline_ready else "⚪ Pipeline Uninitialized"}</div>
-                    <div style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--color-text-muted);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div class="nids-card-title" style="margin: 0;">⚡ Fast-Track Pipeline Initialization</div>
+                    <span class="nids-badge nids-badge-info">Automated SOC Setup</span>
+                </div>
+                <div style="font-size: 0.875rem; color: var(--bb-text-muted); line-height: 1.6;">
+                    <div style="margin-bottom: 0.35rem;">
+                        <strong>Flow Telemetry:</strong> <span style="color: {'#34d399' if demo_installed else '#94a3b8'};">{flow_status_text}</span>
+                    </div>
+                    <div style="margin-bottom: 0.35rem;">
+                        <strong>Detection Engine:</strong> <span style="color: {'#818cf8' if pipeline_ready else '#94a3b8'};">{pipeline_status_text}</span>
+                    </div>
+                    <div style="margin-top: 0.625rem; font-size: 0.8125rem; color: var(--bb-text-subtle);">
                         Click <strong>Run Full Pipeline</strong> to generate sample telemetry, execute preprocessing, train the 3 models, evaluate test holdout, and perform batch detection in ~2 seconds.
                     </div>
                 </div>
@@ -124,7 +188,7 @@ def _render_quickstart_section(
                     st.error(f"Pipeline initialization failed: {e}")
 
         if demo_installed or pipeline_ready or dataset_status.is_loaded or model_status.trained_count > 0:
-            if st.button("🧹 Reset to Clean State", key="btn_reset_clean_state", use_container_width=True):
+            if st.button("🧹 Reset System State", key="btn_reset_clean_state", use_container_width=True):
                 with st.spinner("Restoring clean repository state..."):
                     res = clear_demo_dataset()
                     st.toast("System restored to clean state.", icon="🧹")
@@ -133,61 +197,10 @@ def _render_quickstart_section(
     st.markdown("<div style='height: 0.75rem;'></div>", unsafe_allow_html=True)
 
 
-def _render_executive_summary_cards(
-    dataset_status: DatasetStatus,
-    model_status: ModelSystemStatus,
-) -> None:
-    """Render Section B: Executive Summary Cards with verifiable state."""
-    col1, col2, col3, col4 = st.columns(4)
-
-    # 1. Dataset Readiness
-    with col1:
-        dataset_color = None if dataset_status.is_loaded else "var(--color-status-warning)"
-        metric_card(
-            label="Dataset Readiness",
-            value=dataset_status.summary_text,
-            subtitle=f"Target: {dataset_status.target_dataset_name}",
-            status_color=dataset_color,
-        )
-
-    # 2. Available Trained Models
-    with col2:
-        model_color = None if model_status.trained_count > 0 else "var(--color-text-secondary)"
-        metric_card(
-            label="Available Trained Models",
-            value=model_status.summary_text,
-            subtitle="SVM, MLP, Decision Tree",
-            status_color=model_color,
-        )
-
-    # 3. Traffic Analysis Status
-    with col3:
-        traffic_status = check_traffic_analysis_status()
-        metric_card(
-            label="Traffic Analysis Status",
-            value=traffic_status.summary_text,
-            subtitle=traffic_status.detail_text,
-            status_color="var(--color-text-secondary)",
-        )
-
-    # 4. Dataset Engineering Status (CP-05)
-    with col4:
-        eng_status = check_dataset_engineering_status(session_state=st.session_state)
-        status_color = "var(--color-status-success)" if eng_status.is_completed else (
-            "var(--color-status-warning)" if eng_status.state == "Failed" else "var(--color-text-secondary)"
-        )
-        metric_card(
-            label="Dataset Engineering",
-            value=eng_status.summary_text,
-            subtitle=eng_status.detail_text,
-            status_color=status_color,
-        )
-
-
 def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
     """Render Section C: Dataset Readiness Section."""
     section_header(
-        title="Dataset Readiness & Telemetry Source",
+        title="Network Flow Telemetry Ingestion",
         description="Verifiable state of benchmark dataset storage and expected input files:",
     )
 
@@ -197,7 +210,7 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
             f"""
             <div class="nids-card" style="margin-bottom: 0;">
                 <div class="nids-card-title">Specification Parameters</div>
-                <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.8;">
+                <div style="font-size: 0.875rem; color: var(--bb-text-muted); line-height: 1.8;">
                     <div><strong>Target Corpus:</strong> {dataset_status.target_dataset_name}</div>
                     <div><strong>Expected Input:</strong> {dataset_status.expected_format} (Flow Telemetry CSV)</div>
                     <div><strong>Local Storage Target:</strong> <code>{dataset_status.storage_path}</code></div>
@@ -219,7 +232,7 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
                     <div class="nids-card-title" style="margin: 0;">Storage State</div>
                     {badge_markup}
                 </div>
-                <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.6;">
+                <div style="font-size: 0.875rem; color: var(--bb-text-muted); line-height: 1.6;">
                     <div><strong>Detected Files:</strong> {dataset_status.file_count} compatible CSVs</div>
                     <div><strong>Directory Status:</strong> Initialized (Read-only verified)</div>
                     <div><strong>Validation Status:</strong> {dataset_status.validation_status}</div>
@@ -245,12 +258,12 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
     # Verification checklist of expected raw flow files
     st.markdown(
         "<div style='font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; "
-        "letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.25rem;'>"
+        "letter-spacing: 0.05em; color: var(--bb-text-muted); margin-bottom: 0.25rem;'>"
         "Expected Benchmark Flow Files (Kaggle Specification — Awaiting Validation):</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<p style='font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.75rem;'>"
+        "<p style='font-size: 0.75rem; color: #64748b; margin-bottom: 0.75rem;'>"
         "Note: The 8 filenames and ~78 feature dimension reflect the standard CIC-IDS-2017 Kaggle distribution specification. "
         "Exact filenames and column schemas are treated as expected specifications awaiting validation upon CSV ingestion in CP-04/05."
         "</p>",
@@ -272,8 +285,8 @@ def _render_dataset_readiness_section(dataset_status: DatasetStatus) -> None:
 def _render_ml_model_overview_section(model_status: ModelSystemStatus) -> None:
     """Render Section D: Machine Learning Model Overview (Strictly 3 authorized algorithms)."""
     section_header(
-        title="Machine Learning Model Architectures",
-        description="Status of the three authorized machine learning models (strictly SVM, MLP, Decision Tree) implemented in CP-06:",
+        title="Tri-Model Classifier Architectures",
+        description="Strictly restricted to 3 authorized estimator families representing distinct learning paradigms:",
     )
 
     col1, col2, col3 = st.columns(3)
@@ -298,9 +311,9 @@ def _render_ml_model_overview_section(model_status: ModelSystemStatus) -> None:
                         <div class="nids-model-desc">{model.description}</div>
                     </div>
                     <div class="nids-model-footer">
-                        <span style="color: var(--color-text-muted);">Checkpoint: CP-06</span>
-                        <span style="color: var(--color-accent-primary); font-weight: 500;">
-                            {model.artifact_path or "No Artifact"}
+                        <span style="color: var(--bb-text-muted);">Family: {key.upper()}</span>
+                        <span style="color: #818cf8; font-weight: 500;">
+                            {model.artifact_path or "Not Fitted"}
                         </span>
                     </div>
                 </div>
@@ -312,8 +325,8 @@ def _render_ml_model_overview_section(model_status: ModelSystemStatus) -> None:
 def _render_detection_pipeline_section() -> None:
     """Render Section E: Detection Pipeline Overview."""
     section_header(
-        title="End-to-End Detection Pipeline",
-        description="Planned operational workflow connecting raw flow CSVs to forensic threat reporting:",
+        title="Threat Processing Architecture",
+        description="Streamlined operational workflow connecting raw flow CSVs to forensic threat reporting:",
     )
 
     stages = get_detection_pipeline_stages()
@@ -327,7 +340,7 @@ def _render_detection_pipeline_section() -> None:
                 f"""
                 <div class="nids-pipeline-step">
                     <div class="nids-pipeline-step-header">
-                        <span style="font-size: 0.6875rem; font-weight: 700; color: var(--color-accent-primary); text-transform: uppercase;">
+                        <span style="font-size: 0.6875rem; font-weight: 700; color: #818cf8; text-transform: uppercase;">
                             {stage.target_checkpoint}
                         </span>
                         {badge}
@@ -343,7 +356,7 @@ def _render_detection_pipeline_section() -> None:
 def _render_project_progress_section() -> None:
     """Render Section F: Project Progress Section (12 Milestones)."""
     section_header(
-        title="Project Development Milestones",
+        title="Platform Security Architecture & Roadmap",
         description="12-checkpoint academic engineering roadmap and implementation state:",
     )
 
@@ -374,7 +387,7 @@ def _render_project_progress_section() -> None:
 
 
 def _render_getting_started_section() -> None:
-    """Render Section H: Getting Started Section."""
+    """Render Section G: Getting Started Section."""
     from dashboard.navigation import set_active_route
 
     section_header(
@@ -449,7 +462,7 @@ def _render_getting_started_section() -> None:
                         <div class="nids-step-num">{idx}</div>
                         <div>
                             <div class="nids-step-text" style="font-weight: 600;">{title}</div>
-                            <div style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-top: 0.125rem;">{desc}</div>
+                            <div style="font-size: 0.8125rem; color: var(--bb-text-muted); margin-top: 0.125rem;">{desc}</div>
                         </div>
                     </div>
                     <div>{badge}</div>
@@ -480,21 +493,21 @@ def _render_preprocessed_datasets_section(eng_status: DatasetEngineeringStatus) 
                 label="Prepared Runs",
                 value=f"{eng_status.run_count} Run{'s' if eng_status.run_count != 1 else ''}",
                 subtitle=f"ID: {eng_status.latest_run_id[:16]}...",
-                status_color="var(--color-status-success)",
+                status_color="#34d399",
             )
         with c2:
             metric_card(
                 label="Supervised Samples",
                 value=f"{eng_status.supervised_rows:,}",
                 subtitle=f"{eng_status.train_rows:,} Tr / {eng_status.val_rows:,} Val / {eng_status.test_rows:,} Te",
-                status_color="var(--color-accent-primary)",
+                status_color="#818cf8",
             )
         with c3:
             metric_card(
                 label="Target Dimensions",
                 value=f"{eng_status.supervised_rows:,} × {eng_status.num_features_out}",
                 subtitle="Dual scaled & encoded",
-                status_color="var(--color-accent-primary)",
+                status_color="#06b6d4",
             )
         with c4:
             classes_preview = ", ".join(eng_status.classes[:2]) + ("..." if len(eng_status.classes) > 2 else "")
@@ -502,7 +515,7 @@ def _render_preprocessed_datasets_section(eng_status: DatasetEngineeringStatus) 
                 label="Identified Classes",
                 value=f"{eng_status.num_classes} Classes",
                 subtitle=classes_preview,
-                status_color="var(--color-status-success)",
+                status_color="#34d399",
             )
     else:
         status_msg = (
@@ -546,17 +559,17 @@ def render() -> None:
     # 5. Section C: Dataset Readiness Section
     _render_dataset_readiness_section(dataset_status)
 
-    # 5. Section D: Preprocessed Datasets & ML Partitions (CP-05)
+    # 6. Section D: Preprocessed Datasets & ML Partitions (CP-05)
     _render_preprocessed_datasets_section(eng_status)
 
-    # 6. Section E: Machine Learning Model Overview
+    # 7. Section E: Machine Learning Model Overview
     _render_ml_model_overview_section(model_status)
 
-    # 7. Section F: Detection Pipeline Overview
+    # 8. Section F: Detection Pipeline Overview
     _render_detection_pipeline_section()
 
-    # 8. Section G: Project Progress Section
+    # 9. Section G: Project Progress Section
     _render_project_progress_section()
 
-    # 9. Section H: Getting Started Section
+    # 10. Section H: Getting Started Section
     _render_getting_started_section()

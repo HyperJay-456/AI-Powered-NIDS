@@ -41,7 +41,7 @@ def render() -> None:
         title="Reporting & Evidence Export",
         subtitle="Publication-grade PDF assessment reports, machine-readable forensic exports, and verified evidence bundles",
         icon="📑",
-        badges=[("Checkpoint CP-11", "info"), ("Local-First", "success")],
+        badges=[("Forensic PDF Engine", "info"), ("Cryptographic Verification", "success")],
     )
 
     registry = ReportRegistry()
@@ -49,10 +49,10 @@ def render() -> None:
     service = ReportService()
 
     # --------------------------------------------------------------------------
-    # Section A — Reporting Overview
+    # Reporting Overview
     # --------------------------------------------------------------------------
     section_header(
-        title="Section A — Reporting Subsystem Overview",
+        title="Reporting & Evidence Overview",
         description="Summary of generated cybersecurity assessment reports and verified evidence bundles.",
     )
 
@@ -89,11 +89,11 @@ def render() -> None:
         )
 
     # --------------------------------------------------------------------------
-    # Section B — Select Detection Run
+    # Source Detection Run Selection
     # --------------------------------------------------------------------------
     section_header(
-        title="Section B — Source Detection Run Selection",
-        description="Select a completed CP-08 intrusion detection run to serve as the evidence baseline.",
+        title="Source Detection Run Selection",
+        description="Select a completed intrusion detection run to serve as the evidence baseline.",
     )
 
     allow_fixtures = st.checkbox(
@@ -144,10 +144,10 @@ def render() -> None:
                 st.write(", ".join(algos) if algos else "SVM, MLP, Decision Tree")
 
     # --------------------------------------------------------------------------
-    # Section C — Report Configuration
+    # Report Configuration
     # --------------------------------------------------------------------------
     section_header(
-        title="Section C — Report Format & Classification Configuration",
+        title="Report Format & Classification Configuration",
         description="Configure report archetype, audience scope, sensitivity labels, and custom titles.",
     )
 
@@ -180,10 +180,10 @@ def render() -> None:
         )
 
     # --------------------------------------------------------------------------
-    # Section D — Evidence & Privacy Configuration
+    # Privacy & Evidence Configuration
     # --------------------------------------------------------------------------
     section_header(
-        title="Section D — Privacy Controls & Evidence Selection",
+        title="Privacy Controls & Evidence Selection",
         description="Enforce data protection, IP address masking, and formula injection safeguards.",
     )
 
@@ -218,11 +218,11 @@ def render() -> None:
     )
 
     # --------------------------------------------------------------------------
-    # Section E — Generate Report Action
+    # Report Generation Action
     # --------------------------------------------------------------------------
     st.write("")
     section_header(
-        title="Section E — Report Generation Engine",
+        title="Report Generation Engine",
         description="Compile publication-grade PDF documents and cryptographically verified evidence packages.",
     )
 
@@ -269,13 +269,13 @@ def render() -> None:
                 logger.error(f"UI report generation failed: {e}", exc_info=True)
 
     # --------------------------------------------------------------------------
-    # Section F — Preview & Download Console
+    # Preview & Download Center
     # --------------------------------------------------------------------------
     latest_id = st.session_state.get("latest_report_id")
     if latest_id:
         st.write("")
         section_header(
-            title="Section F — Report Preview & Download Center",
+            title="Report Preview & Download Center",
             description=f"Direct inspection and downloads for Report: {latest_id}",
         )
 
@@ -403,11 +403,11 @@ def render() -> None:
                                 )
 
     # --------------------------------------------------------------------------
-    # Section G — Historical Reports Catalog
+    # Historical Reports Catalog
     # --------------------------------------------------------------------------
     st.write("")
     section_header(
-        title="Section G — Historical Reports & Integrity Verification",
+        title="Historical Reports & Cryptographic Verification",
         description="Browse, verify cryptographic checksums, and download previous reports without regeneration.",
     )
 
