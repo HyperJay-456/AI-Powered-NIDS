@@ -112,6 +112,20 @@ class ModelEvaluationStatus:
 
 
 @dataclass(frozen=True)
+class DetectionEngineStatus:
+    """Verifiable status of operational intrusion detection engine runs."""
+
+    state: str  # "Not Started", "Active", "Completed", "Failed"
+    is_completed: bool
+    detection_run_count: int
+    latest_run_id: Optional[str]
+    latest_run_status: Optional[str]
+    total_predicted_rows: int
+    summary_text: str
+    detail_text: str
+
+
+@dataclass(frozen=True)
 class PipelineStage:
     """Pipeline progression stage status."""
 
@@ -579,11 +593,76 @@ def check_model_evaluation_status(
     )
 
 
+def check_detection_engine_status(
+    analyses_dir: Optional[Path] = None,
+    include_test_fixtures: bool = False,
+) -> DetectionEngineStatus:
+    """Verify verifiable status of operational intrusion detection runs.
+
+    Args:
+        analyses_dir: Optional override path for analyses storage.
+        include_test_fixtures: Whether to count automated test fixtures.
+
+    Returns:
+        DetectionEngineStatus: Non-fabricated detection telemetry.
+    """
+    target_dir = analyses_dir or settings.analyses_dir
+    eval_status = check_model_evaluation_status()
+
+    if not target_dir.exists():
+        state = "Active" if eval_status.is_completed else "Not Started"
+        return DetectionEngineStatus(
+            state=state,
+            is_completed=False,
+            detection_run_count=0,
+            latest_run_id=None,
+            latest_run_status=None,
+            total_predicted_rows=0,
+            summary_text="Ready for Inference" if eval_status.is_completed else "Awaiting Evaluation",
+            detail_text="Evaluated candidate models ready" if eval_status.is_completed else "No evaluated candidate models found",
+        )
+
+    from src.detection.detection_registry import DetectionRegistry
+
+    reg = DetectionRegistry(analyses_dir=target_dir)
+    runs = reg.list_detection_runs(include_test_fixtures=include_test_fixtures, verify_checksums=False)
+
+    if not runs:
+        state = "Active" if eval_status.is_completed else "Not Started"
+        return DetectionEngineStatus(
+            state=state,
+            is_completed=False,
+            detection_run_count=0,
+            latest_run_id=None,
+            latest_run_status=None,
+            total_predicted_rows=0,
+            summary_text="Ready for Inference" if eval_status.is_completed else "Awaiting Evaluation",
+            detail_text="Evaluated candidate models ready" if eval_status.is_completed else "No evaluated candidate models found",
+        )
+
+    latest = runs[0]
+    total_pred = sum(r.get("predicted_rows", 0) for r in runs)
+    latest_id = latest.get("detection_run_id")
+    latest_st = latest.get("status", "Completed")
+
+    return DetectionEngineStatus(
+        state="Completed",
+        is_completed=True,
+        detection_run_count=len(runs),
+        latest_run_id=latest_id,
+        latest_run_status=latest_st,
+        total_predicted_rows=total_pred,
+        summary_text=f"{len(runs)} Detection Run{'s' if len(runs) > 1 else ''}",
+        detail_text=f"{latest_st} • {latest.get('predicted_rows', 0):,} rows classified",
+    )
+
+
 def get_detection_pipeline_stages() -> List[PipelineStage]:
     """Retrieve the formal detection pipeline stages with their verifiable implementation state."""
     ds_status = check_dataset_status()
     eng_status = check_dataset_engineering_status()
     md_status = check_model_status()
+    det_status = check_detection_engine_status()
 
     # Dynamic status evaluation
     stage1_status = "Completed" if ds_status.validated_count > 0 else ("Active" if ds_status.is_loaded else "Pending")
@@ -597,6 +676,9 @@ def get_detection_pipeline_stages() -> List[PipelineStage]:
 
     stage4_status = "Completed" if md_status.trained_count == md_status.total_models else ("Active" if md_status.trained_count > 0 else "Pending")
     stage4_variant = "success" if stage4_status == "Completed" else ("info" if stage4_status == "Active" else "neutral")
+
+    stage5_status = "Completed" if det_status.is_completed else ("Active" if det_status.state == "Active" else "Pending")
+    stage5_variant = "success" if stage5_status == "Completed" else ("info" if stage5_status == "Active" else "neutral")
 
     return [
         PipelineStage(
@@ -635,8 +717,8 @@ def get_detection_pipeline_stages() -> List[PipelineStage]:
             stage_id="prediction_results",
             title="5. Prediction Results",
             description="Confidence thresholding, severity alerts & explainability",
-            status="Pending",
-            badge_variant="neutral",
+            status=stage5_status,
+            badge_variant=stage5_variant,
             target_checkpoint="CP-08 & CP-09",
         ),
         PipelineStage(
@@ -677,6 +759,17 @@ def get_project_milestones() -> List[ProjectMilestone]:
     else:
         cp07_status = "Planned"
         cp07_variant = "neutral"
+
+    det_status = check_detection_engine_status()
+    if det_status.is_completed:
+        cp08_status = "Completed"
+        cp08_variant = "success"
+    elif eval_status.is_completed:
+        cp08_status = "Active"
+        cp08_variant = "info"
+    else:
+        cp08_status = "Planned"
+        cp08_variant = "neutral"
 
     return [
         ProjectMilestone("CP-01", "Project Foundation", "Completed", "success", "Directory structure, settings, dependencies & Git baseline"),

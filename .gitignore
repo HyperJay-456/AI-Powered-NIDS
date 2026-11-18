@@ -63,6 +63,8 @@ data/processed/*
 !data/processed/.gitkeep
 data/metadata/*
 !data/metadata/.gitkeep
+data/analyses/*
+!data/analyses/.gitkeep
 *.db
 *.sqlite
 *.sqlite3

@@ -20,6 +20,7 @@ METADATA_DIR: Path = DATA_DIR / "metadata"
 MODELS_DIR: Path = BASE_DIR / "models"
 SAVED_MODELS_DIR: Path = MODELS_DIR / "saved"
 EVALUATIONS_DIR: Path = MODELS_DIR / "evaluations"
+ANALYSES_DIR: Path = DATA_DIR / "analyses"
 LOGS_DIR: Path = BASE_DIR / "logs"
 SRC_DIR: Path = BASE_DIR / "src"
 
@@ -155,6 +156,21 @@ class EvaluationConfig:
 
 
 # ==============================================================================
+# Intrusion Detection Engine Configurations (CP-08)
+# ==============================================================================
+@dataclass(frozen=True)
+class DetectionConfig:
+    """Configuration for operational intrusion detection inference."""
+
+    default_batch_size: int = 10_000
+    min_batch_size: int = 1_000
+    max_batch_size: int = 50_000
+    min_ram_free_mb: int = 512
+    min_disk_free_mb: int = 500
+    max_preview_rows: int = 50
+
+
+# ==============================================================================
 # ==============================================================================
 # Ingestion & Large File Batch Configurations
 # ==============================================================================
@@ -234,6 +250,7 @@ class AppConfig:
     models_dir: Path = MODELS_DIR
     saved_models_dir: Path = SAVED_MODELS_DIR
     evaluations_dir: Path = EVALUATIONS_DIR
+    analyses_dir: Path = ANALYSES_DIR
     logs_dir: Path = LOGS_DIR
     src_dir: Path = SRC_DIR
 
@@ -242,6 +259,7 @@ class AppConfig:
     preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
     models: ModelHyperparameters = field(default_factory=ModelHyperparameters)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
+    detection: DetectionConfig = field(default_factory=DetectionConfig)
     ui: StreamlitConfig = field(default_factory=StreamlitConfig)
 
     def ensure_directories(self) -> None:
@@ -252,6 +270,7 @@ class AppConfig:
             self.metadata_dir,
             self.saved_models_dir,
             self.evaluations_dir,
+            self.analyses_dir,
             self.logs_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
