@@ -113,12 +113,12 @@ The platform is designed around the **CIC-IDS-2017** benchmark corpus developed 
 ## Interactive Dashboard Views (8 Routes)
 
 1. **Overview (`overview`):** Executive telemetry dashboard, system status checker, directory inventory, and benchmark checklist.
-2. **Traffic Analysis (`traffic_analysis`):** File upload drop-zone, structural CSV validation, duplicate detection, and schema explorer.
-3. **Detection Center (`detection_center`):** Operational batch inference console supporting single- and multi-model execution and disagreement analysis.
+2. **Traffic Analysis (`traffic_analysis`):** Validated CSV network-flow ingestion, structural CSV validation, disk-backed duplicate detection, and schema explorer (no PCAP or live network capture).
+3. **Detection Center (`detection_center`):** CSV-based batch detection engine supporting feature alignment, three-model predictions (LinearSVC, MLPClassifier, DecisionTreeClassifier), and algorithm disagreement analysis (no threat severity scoring or alert generation).
 4. **Model Laboratory (`model_laboratory`):** Training orchestrator for SVM, MLP, and Decision Tree with resource preflights and CP-07 evaluation benchmarking.
 5. **Threat Intelligence (`threat_intelligence`):** Pinned MITRE ATT&CK Enterprise v20.1 catalogue, dataset taxonomy, and candidate technique mapping review.
 6. **Prediction Explorer (`prediction_explorer`):** Multi-attribute search, filtering, individual flow inspector, and human analyst review triage.
-7. **Reports (`reports`):** Publication-grade PDF generator (Executive, Technical, Analyst, Consolidated), CSV exports, and evidence ZIP packages.
+7. **Reports (`reports`):** Publication-grade ReportLab PDF generator (Executive, Technical, Analyst, Consolidated), structured JSON/CSV exports, and SHA-256-verified ZIP evidence bundles (no HTML reports or digital signatures).
 8. **About (`about`):** Theoretical foundations, algorithmic justification, academic context, and release specifications.
 
 ---
@@ -175,14 +175,14 @@ pytest tests/ -q
 | **CP-01** | Project Foundation | **Completed** | Clean modular architecture, centralized settings, Git versioning |
 | **CP-02** | UI Design System | **Completed** | Streamlit design tokens, custom cybersecurity CSS, atomic components |
 | **CP-03** | Application Dashboard | **Completed** | Executive overview, pipeline health checker, benchmark checklist |
-| **CP-04** | Traffic Upload & Data Explorer | **Completed** | Chunked CSV ingestion, structural validator, duplicate detection |
+| **CP-04** | Traffic Upload & Data Explorer | **Completed** | Validated CSV network-flow ingestion, structural validator, duplicate detection |
 | **CP-05** | Dataset Engineering | **Completed** | Leakage-free train/val/test splitting, training-only imputation, scaling |
 | **CP-06** | ML Training Pipeline | **Completed** | Resource-aware training for LinearSVC, MLP, and Decision Tree |
 | **CP-07** | Model Evaluation Laboratory | **Completed** | Multiclass confusion matrices, ROC/PR curves, candidate freezing, test locks |
-| **CP-08** | Intrusion Detection Engine | **Completed** | Batch inference pipeline, multi-model consensus, row accounting |
+| **CP-08** | Intrusion Detection Engine | **Completed** | CSV-based batch detection engine, feature alignment, three-model predictions, disagreement analysis |
 | **CP-09** | Prediction Explorer & Analyst Review | **Completed** | Multi-attribute search, flow inspector, append-only review journals |
 | **CP-10** | Threat Intelligence & Attack Context | **Completed** | MITRE ATT&CK v20.1 STIX catalogue, candidate mappings, evidence context |
-| **CP-11** | Reporting & Evidence Export | **Completed** | Publication-grade PDF reports, CSV formula protection, evidence ZIPs |
+| **CP-11** | Reporting & Evidence Export | **Completed** | ReportLab PDF generation, structured JSON/CSV exports, SHA-256-verified ZIP evidence bundles |
 | **CP-12** | Final Integration, Testing & Release | **Completed** | End-to-end integration audit, v1.0.0 release manifest, local release tag |
 
 ---

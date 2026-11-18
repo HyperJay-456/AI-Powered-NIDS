@@ -84,13 +84,13 @@ http://localhost:8501
 ## 4. First-Run Behavior & Genuine Empty States
 
 When launching the application for the first time without uploaded traffic or pre-trained models, the application strictly presents **genuine empty states**:
-- **Overview (01):** Displays real-time directory presence, indicating raw flow files are awaiting upload.
-- **Traffic Analysis (02):** Shows empty file drop-zone ready to receive CIC-IDS-2017 flow CSVs.
-- **Detection Center (03):** Shows "Awaiting Models" badge until models are trained in the Model Laboratory.
+- **Overview (01):** Displays local directory presence and system readiness status, indicating raw flow files are awaiting upload.
+- **Traffic Analysis (02):** Shows empty file drop-zone ready to receive validated CIC-IDS-2017 flow CSVs (no PCAP or live network capture).
+- **Detection Center (03):** Shows "Awaiting Models" badge until models are trained; provides CSV-based batch inference, three-model predictions, and disagreement analysis (no threat severity scoring or alert generation).
 - **Model Laboratory (04):** Shows "No Preprocessed Datasets Detected" until Dataset Engineering is executed.
 - **Threat Intelligence (05):** Fully operational offline catalogue indexing MITRE ATT&CK Enterprise v20.1 techniques.
 - **Prediction Explorer (06):** Displays informational notice explaining prerequisite detection runs.
-- **Reports (07):** Displays "No Production Reports Generated Yet" with controls to compile new reports.
+- **Reports (07):** Displays "No Production Reports Generated Yet" with controls to compile ReportLab PDFs, JSON/CSV exports, and SHA-256-verified ZIP evidence bundles (no HTML reports or digital signatures).
 - **About (08):** Outlines academic context, theoretical algorithm rationale, and release specifications.
 
 ---

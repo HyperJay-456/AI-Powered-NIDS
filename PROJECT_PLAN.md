@@ -27,7 +27,7 @@ This document formalizes the comprehensive 12-checkpoint execution roadmap for t
                                             v
 +---------------------------------------------------------------------------------------+
 |  CP-04: Traffic Upload & Data Explorer                                                |
-|  - CSV/PCAP flow uploader, schema validator, dynamic filtering, descriptive telemetry |
+|  - Validated CSV flow uploader, schema validator, dynamic filtering, telemetry        |
 +-------------------------------------------+-------------------------------------------+
                                             | Human Approval Gate
                                             v
@@ -51,7 +51,7 @@ This document formalizes the comprehensive 12-checkpoint execution roadmap for t
                                             v
 +---------------------------------------------------------------------------------------+
 |  CP-08: Intrusion Detection Engine                                                    |
-|  - Real-time classification engine, low-latency inference, thresholding & alerts       |
+|  - CSV-based batch detection engine, feature alignment, three-model predictions       |
 +-------------------------------------------+-------------------------------------------+
                                             | Human Approval Gate
                                             v
@@ -107,7 +107,7 @@ This document formalizes the comprehensive 12-checkpoint execution roadmap for t
 - **Objective:** Establish a cohesive, professional cybersecurity design system, styling architecture, and reusable UI components in Streamlit.
 - **Key Deliverables:**
   - Custom CSS theme and design tokens (dark-mode cybersecurity palette, high-contrast threat indicators, typography).
-  - Reusable Streamlit UI components: KPI metric cards, threat alert banners, status pills, and data containers.
+  - Reusable Streamlit UI components: KPI metric cards, status callout banners, status pills, and data containers.
   - Consistent layout scaffolding across sidebar and main viewports.
 - **Acceptance Criteria:**
   - Consistent styling across all viewports.
@@ -129,10 +129,10 @@ This document formalizes the comprehensive 12-checkpoint execution roadmap for t
 ---
 
 ### CP-04: Traffic Upload & Data Explorer
-- **Status:** **PLANNED**
-- **Objective:** Build an interactive network flow data exploration interface with file upload and dynamic tabular inspection.
+- **Status:** **COMPLETED**
+- **Objective:** Build an interactive network flow data exploration interface with validated CSV network-flow ingestion and dynamic tabular inspection.
 - **Key Deliverables:**
-  - Network flow file uploader supporting CSV and sample flow records.
+  - Validated CSV network-flow ingestion engine supporting chunked streaming and schema validation.
   - Interactive DataFrame explorer with column filtering, search, and sorting.
   - Summary statistics panel: flow duration distributions, packet length aggregates, protocol breakdown.
 - **Acceptance Criteria:**
@@ -188,14 +188,14 @@ This document formalizes the comprehensive 12-checkpoint execution roadmap for t
 ---
 
 ### CP-08: Intrusion Detection Engine
-- **Status:** **PLANNED**
-- **Objective:** Deliver the operational intrusion detection inference engine capable of classifying single flows and micro-batches.
+- **Status:** **COMPLETED**
+- **Objective:** Deliver the operational CSV-based batch detection engine, feature alignment, three-model predictions, and algorithm disagreement analysis.
 - **Key Deliverables:**
-  - Low-latency inference pipeline applying saved preprocessing transforms and model estimators.
-  - Configurable decision thresholds and severity-ranked alert generation.
-  - Real-time classification engine with sub-50ms single-flow turnaround.
+  - Offline CSV-based batch detection engine applying saved preprocessing transforms and three-model estimators.
+  - Feature alignment verification between ingested flows and trained pipeline expectations.
+  - Independent three-model predictions (LinearSVC, MLPClassifier, DecisionTreeClassifier) and algorithm disagreement analysis.
 - **Acceptance Criteria:**
-  - Accurately classifies incoming flow vectors into Benign or specific attack signatures.
+  - Accurately classifies incoming flow vectors into Benign or specific attack classes.
   - Gracefully handles malformed or out-of-range flow vectors.
 
 ---
@@ -217,7 +217,7 @@ This document formalizes the comprehensive 12-checkpoint execution roadmap for t
 - **Status:** **PLANNED**
 - **Objective:** Build automated report generation and audit trail export capabilities.
 - **Key Deliverables:**
-  - Diagnostic executive report generator (PDF / HTML / Markdown).
+  - Diagnostic executive report generator (ReportLab PDF / JSON / CSV).
   - Forensic CSV/JSON export for classified intrusion events.
   - Model card and benchmark data export for academic auditing.
 - **Acceptance Criteria:**

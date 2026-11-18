@@ -6,7 +6,7 @@ This user guide documents how to operate the **Reporting & Evidence Export** sub
 
 ## 1. Overview & Core Capabilities
 
-The Reporting & Evidence Export subsystem enables security practitioners, auditors, evaluators, and researchers to transform raw network traffic intrusion classifications into publication-grade reports and cryptographically verified digital evidence packages.
+The Reporting & Evidence Export subsystem enables security practitioners, auditors, evaluators, and researchers to transform validated CSV network-flow intrusion classifications into publication-grade ReportLab PDF reports and SHA-256-verified digital evidence ZIP packages (excluding HTML reports and digital signature certificates).
 
 ### Supported Report Archetypes
 1. **Executive Security Summary:** High-level threat overview tailored for evaluators, instructors, and non-technical stakeholders. Highlights traffic volume, attack proportions, consensus distributions, and key defensive observations.

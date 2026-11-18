@@ -2,8 +2,9 @@
   "manifest_version": "1.0.0",
   "product_name": "AI-Powered Network Intrusion Detection System (NIDS)",
   "version": "1.0.0",
-  "release_status": "Production Release",
+  "release_status": "Production Release (Documentation-Audited)",
   "release_date_utc": "2026-11-18T13:45:00Z",
+  "audit_date_utc": "2026-11-18T14:45:00Z",
   "git_branch": "master",
   "python_version": "3.13.14",
   "target_environment": {
@@ -34,14 +35,14 @@
     "status": "PASSED"
   },
   "supported_capabilities": [
-    "CSV Flow Upload, Validation & Chunked Parsing (CP-04)",
+    "Validated CSV Network-Flow Ingestion, Chunked Parsing & Duplicate Detection (CP-04)",
     "Dataset Engineering, Leakage-Free Splitting & Imputation (CP-05)",
     "ML Training Pipeline, Resource Preflight & Model Registry (CP-06)",
     "Model Evaluation Laboratory, ROC/PR Curves & Holdout Governance (CP-07)",
-    "Intrusion Detection Engine, Multi-Algorithm Inference & Disagreement Analysis (CP-08)",
+    "CSV-Based Batch Detection Engine, Feature Alignment, Three-Model Predictions & Disagreement Analysis (CP-08)",
     "Prediction Explorer, Attribute Filtering & Analyst Review Journal (CP-09)",
     "Threat Intelligence, STIX 2.1 ATT&CK Loader & Evidence-Aware Context (CP-10)",
-    "Publication-Grade PDF Reporting, Structured CSV Exports & Evidence Bundles (CP-11)",
+    "ReportLab PDF Generation, Structured JSON/CSV Exports & SHA-256-Verified Evidence ZIP Bundles (CP-11)",
     "Local-First Architecture, Concurrency Locks & Integrity Verification (CP-12)"
   ],
   "security_safeguards": [
@@ -54,21 +55,35 @@
     "Immutable raw datasets and append-only analyst audit journals"
   ],
   "known_limitations": [
-    "Offline batch analysis: designed for flow CSV captures, not live raw packet sniffing (PCAP)",
+    "Offline batch analysis: designed strictly for validated CSV network-flow captures; no raw packet sniffing (PCAP) or live network capture",
+    "Detection engine scope: delivers batch predictions, feature alignment, and disagreement analysis without threat severity scoring or alert generation",
+    "Reporting engine scope: generates ReportLab PDFs, structured JSON/CSV exports, and SHA-256-verified ZIP evidence bundles without HTML reports or digital signature certificates",
     "Fixed algorithm scope: restricted strictly to the 3 authorized algorithms by architectural mandate",
     "Evaluation holdout lock: one-time test evaluation per candidate freeze to prevent data snooping"
   ],
   "documentation_inventory": {
     "readme": "README.md",
     "architecture": "ARCHITECTURE.md",
+    "project_plan": "PROJECT_PLAN.md",
     "installation_guide": "docs/INSTALLATION_GUIDE.md",
     "release_notes": "docs/RELEASE_NOTES_v1.0.0.md",
     "final_release_audit": "docs/FINAL_RELEASE_AUDIT.md",
     "user_guide": "docs/REPORTING_USER_GUIDE.md"
   },
-  "source_distribution": {
-    "filename": "nids_v1.0.0_source.zip",
-    "sha256": "010126d53f4308b75f8a09deba586ef6f2f708f24b9b205b53cddd068ead238d",
-    "size_bytes": 455694
+  "source_distributions": {
+    "original_release_archive": {
+      "filename": "nids_v1.0.0_source.zip",
+      "sha256": "010126d53f4308b75f8a09deba586ef6f2f708f24b9b205b53cddd068ead238d",
+      "size_bytes": 455694,
+      "tag": "v1.0.0",
+      "commit": "b17236cad592ea6525d8aedc8c2e33eb448e780c",
+      "description": "Original release archive created during initial CP-12 tagging."
+    },
+    "corrected_release_archive": {
+      "filename": "nids_v1.0.0_source_corrected.zip",
+      "sha256": "bd56476307146c96e87ec1ef3edfe0c7887bff2f0a7811b3c9ffec83fb8a2f98",
+      "size_bytes": 463160,
+      "description": "Corrected source distribution containing audited documentation for CP-04, CP-08, and CP-11."
+    }
   }
 }

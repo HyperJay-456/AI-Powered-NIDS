@@ -20,14 +20,14 @@ All 12 scheduled engineering checkpoints for the AI-Powered NIDS have been compl
 1. **CP-01 (Project Foundation):** Established modular Python package hierarchy, centralized `config/settings.py`, and comprehensive `.gitignore` rules.
 2. **CP-02 (UI Design System & Shell):** Created accessible cybersecurity UI design system, custom CSS token styling, atomic cards, headers, panels, and badges.
 3. **CP-03 (Application Dashboard):** Built high-level executive telemetry console, pipeline health checker, and benchmark verification checklist.
-4. **CP-04 (Traffic Upload & Data Explorer):** Implemented chunked CSV streaming, structural validation, schema inspection, and disk-backed duplicate detection.
+4. **CP-04 (Traffic Upload & Data Explorer):** Implemented validated CSV network-flow ingestion, chunked CSV streaming, structural validation, schema inspection, and disk-backed duplicate detection (excluding PCAP processing and live packet capture).
 5. **CP-05 (Dataset Engineering & Preprocessing):** Built zero-leakage 70/15/15 stratified train/val/test splitting, training-only median imputation, and standard scaling.
 6. **CP-06 (ML Training Pipeline & Model Registry):** Engineered resource-aware training for the three authorized algorithms (LinearSVC, MLPClassifier, DecisionTreeClassifier) with persistent training manifests.
 7. **CP-07 (Model Evaluation Laboratory):** Built multiclass confusion matrices, ROC/PR curves, per-class attack metrics, candidate freezing, and test-holdout evaluation locks.
-8. **CP-08 (Intrusion Detection Engine):** Implemented high-throughput batch inference pipeline, multi-model consensus, and algorithm disagreement analysis.
+8. **CP-08 (Intrusion Detection Engine):** Implemented CSV-based batch detection engine, feature alignment verification, three-model predictions (LinearSVC, MLPClassifier, DecisionTreeClassifier), and algorithm disagreement analysis (excluding threat severity scoring and alert generation).
 9. **CP-09 (Prediction Explorer & Analyst Review):** Built bounded multi-attribute search, flow inspector, and human-in-the-loop triage journals with hash-chained audit trails.
 10. **CP-10 (Threat Intelligence & Attack Context):** Pinned MITRE ATT&CK Enterprise v20.1 STIX 2.1 catalogue, conservative candidate mappings, evidence evaluation, and mapping approval workflows.
-11. **CP-11 (Reporting & Evidence Export):** Developed publication-grade ReportLab PDF generation ("Page X of Y"), structured JSON/CSV exports, CSV formula injection protection, IPv4 redaction, and verifiable evidence ZIP bundles.
+11. **CP-11 (Reporting & Evidence Export):** Developed publication-grade ReportLab PDF generation ("Page X of Y"), structured JSON/CSV exports, CSV formula injection protection, IPv4 host redaction, and SHA-256-verified ZIP evidence bundles (excluding HTML reports and digital signature certificates).
 12. **CP-12 (Final Integration, Testing & Release):** Executed complete end-to-end integration audit, security verification, documentation finalization, release manifest generation, and local `v1.0.0` release preparation.
 
 ---

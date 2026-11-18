@@ -18,14 +18,14 @@ The entire application structure was audited across all 12 checkpoints:
 |---|---|---|---|
 | **Foundation & Config** | `config/settings.py`, `app.py` | Centralized paths, hyperparameters, runtime directories, Streamlit entry point | `test_config.py` |
 | **UI Design System** | `dashboard/theme.py`, `dashboard/components/*`, `dashboard/navigation.py` | Cybersecurity CSS tokens, headers, cards, badges, panels, 8-route navigation | `test_ui_system.py`, `test_app_routes.py` |
-| **Data Ingestion** | `src/data/csv_ingestion.py`, `src/data/csv_validator.py`, `src/data/data_quality.py` | Chunked CSV upload, structural validation, disk-backed duplicate detection, manifests | `test_csv_ingestion.py`, `test_csv_validator.py`, `test_audit_integrity.py` |
+| **Data Ingestion** | `src/data/csv_ingestion.py`, `src/data/csv_validator.py`, `src/data/data_quality.py` | Validated CSV network-flow ingestion, structural validation, disk-backed duplicate detection, manifests (no PCAP or live network capture) | `test_csv_ingestion.py`, `test_csv_validator.py`, `test_audit_integrity.py` |
 | **Dataset Engineering** | `src/data/engineering/*` | Train/validation/test splitting, imputation, scaling, label encoding, artifact manager | `test_dataset_engineering.py` |
 | **Model Training** | `src/models/*`, `src/models/algorithms/*` | LinearSVC, MLPClassifier, DecisionTreeClassifier, training orchestrator, model registry | `test_model_training.py` |
 | **Model Evaluation** | `src/evaluation/*` | Validation & test holdout metrics, confusion matrices, ROC/PR curves, candidate freezing, test locks | `test_model_evaluation.py` |
-| **Detection Engine** | `src/detection/*` | Batch inference pipeline, model eligibility, multi-model consensus, disagreement analysis | `test_detection_engine.py` |
+| **Detection Engine** | `src/detection/*` | CSV-based batch detection engine, feature alignment, three-model predictions, disagreement analysis (no threat severity scoring or alert generation) | `test_detection_engine.py` |
 | **Prediction Explorer** | `src/explorer/*` | Multi-attribute search, filtering, pagination, flow inspector, analyst review journals | `test_prediction_explorer.py` |
 | **Threat Intelligence** | `src/threat_intelligence/*` | MITRE ATT&CK STIX 2.1 loader, candidate label mappings, evidence context, review approval | `test_threat_intelligence.py` |
-| **Reporting & Evidence** | `src/reporting/*` | ReportLab PDF generator, structured JSON/CSV exports, CSV injection protection, evidence ZIP bundles | `test_reporting.py`, `test_release_integration.py` |
+| **Reporting & Evidence** | `src/reporting/*` | ReportLab PDF generator, structured JSON/CSV exports, CSV injection protection, SHA-256-verified evidence ZIP bundles (no HTML reports or digital signatures) | `test_reporting.py`, `test_release_integration.py` |
 
 ---
 

@@ -17,14 +17,14 @@ Version 1.0.0 marks the final production-ready milestone for the **AI-Powered Ne
 1. **CP-01 (Project Foundation):** Clean modular Python architecture, centralized settings, and Git ignore rules.
 2. **CP-02 (UI Design System):** Custom cybersecurity design system, atomic UI components, and accessible color tokens.
 3. **CP-03 (Application Dashboard):** High-level executive telemetry, pipeline status checker, and benchmark checklist.
-4. **CP-04 (Traffic Upload & Data Explorer):** Chunked CSV upload engine, structural validator, schema inspector, and disk-backed deduplication.
+4. **CP-04 (Traffic Upload & Data Explorer):** Validated CSV network-flow ingestion engine, structural validator, schema inspector, and disk-backed deduplication (no PCAP or live network capture).
 5. **CP-05 (Dataset Engineering & Preprocessing):** Zero-leakage train/validation/test splitting, training-only imputation, feature engineering, and robust scaling.
 6. **CP-06 (ML Training Pipeline & Model Registry):** Resource-aware training for the three authorized algorithms (LinearSVC, MLPClassifier, DecisionTreeClassifier) with persistent training manifests.
 7. **CP-07 (Model Evaluation Laboratory):** Multiclass confusion matrices, ROC/PR curves, per-class attack metrics, candidate freezing, and test-holdout evaluation locks.
-8. **CP-08 (Intrusion Detection Engine):** High-throughput chunked batch inference, single- and multi-model execution, and algorithm disagreement analysis.
+8. **CP-08 (Intrusion Detection Engine):** CSV-based batch detection engine, feature alignment verification, three-model predictions (LinearSVC, MLPClassifier, DecisionTreeClassifier), and algorithm disagreement analysis (no threat severity scoring or alert generation).
 9. **CP-09 (Prediction Explorer & Analyst Review):** Bounded search, multi-attribute filtering, flow inspector, and human-in-the-loop review journals with hash-chained audit trails.
 10. **CP-10 (Threat Intelligence & Attack Context):** Pinned MITRE ATT&CK Enterprise v20.1 STIX 2.1 catalogue, conservative candidate technique mappings, evidence evaluation, and mapping approval workflows.
-11. **CP-11 (Reporting & Evidence Export):** Publication-grade ReportLab PDF generation ("Page X of Y"), structured JSON/CSV exports, CSV formula injection protection, IPv4 redaction, and verifiable evidence ZIP bundles.
+11. **CP-11 (Reporting & Evidence Export):** Publication-grade ReportLab PDF generation ("Page X of Y"), structured JSON/CSV exports, CSV formula injection protection, IPv4 host redaction, and SHA-256-verified ZIP evidence bundles (no HTML reports or digital signature certificates).
 12. **CP-12 (Final Integration, Testing & Release):** Full cross-checkpoint integration audit, performance and security verification, documentation finalization, and local `v1.0.0` release manifest.
 
 ---

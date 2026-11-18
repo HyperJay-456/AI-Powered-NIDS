@@ -87,7 +87,7 @@ The **AI-Powered Network Intrusion Detection System (NIDS)** is architected as a
 ## 3. Subsystem Specifications & Contracts
 
 ### 3.1 Data Ingestion & Quality (`src/data/`)
-- **Ingestion Pipeline:** Reads large CSVs (up to 500 MB per file) using bounded chunk streaming (`chunk_size=50_000`).
+- **Validated CSV Ingestion:** Reads validated network-flow CSVs using bounded chunk streaming (`chunk_size=50_000`). Operates strictly on flow-level CSV datasets with zero live packet capture (PCAP) or network sniffing dependencies.
 - **Structural Validation:** Analyzes delimiter consistency, non-ASCII characters, empty lines, and column schema compliance without loading entire files into memory.
 - **Deduplication:** `DiskBackedDuplicateDetector` serializes records into length-prefixed bytes and tracks SHA-256 fingerprints to identify intra-file and cross-file duplicate flows.
 - **Raw File Immutability:** Uploaded files are copied to `data/raw/` with read-only permissions and verified with SHA-256 checksums in `IngestionManifest`.
@@ -111,9 +111,12 @@ The **AI-Powered Network Intrusion Detection System (NIDS)** is architected as a
 - **Test Holdout Lock Governance:** A persistent file-based lock prevents rerunning test-holdout evaluation on altered candidate sets, stopping data snooping.
 
 ### 3.5 Intrusion Detection Engine (`src/detection/`)
-- **Batch Multi-Model Inference:** Executes single-model or comparative multi-model evaluation across chunks of 10,000 rows.
-- **Model Disagreement Analysis:** Computes unanimous agreement, majority consensus, and algorithm divergence without pseudo-ensembling.
+- **CSV-Based Batch Detection Engine:** Evaluates validated CSV flow records across chunks of 10,000 rows without real-time interception or packet sniffing.
+- **Feature Alignment Verification:** Confirms incoming flow feature matrices match trained preprocessor feature names, dimensions, and types before inference.
+- **Three-Model Predictions:** Obtains discrete predicted classes and decision scores independently for LinearSVC, MLPClassifier, and DecisionTreeClassifier.
+- **Model Disagreement Analysis:** Computes unanimous agreement, majority consensus, and algorithm divergence across the three authorized algorithms without pseudo-ensembling.
 - **Row Accounting:** Reconciles input rows against successfully classified, rejected, and skipped records.
+- **Explicit Scope Boundaries:** Threat severity scoring, alert thresholding, and automated firewall/alert generation are not implemented and out of architectural scope.
 
 ### 3.6 Prediction Explorer & Analyst Review (`src/explorer/`)
 - **Attribute Filtering:** Multi-column search, score thresholding, attack family filtering, and bounded pagination.
@@ -126,11 +129,12 @@ The **AI-Powered Network Intrusion Detection System (NIDS)** is architected as a
 - **Evidence Evaluation:** Assesses available network flow telemetry (ports, packet lengths, flow rates) against missing forensic telemetry (host process trees, memory dumps).
 
 ### 3.8 Reporting & Evidence Export (`src/reporting/`)
-- **PDF Generator:** ReportLab compiler with two-pass `NumberedCanvas` rendering publication-grade documents with headers, footers, and page numbers.
+- **PDF Generator:** ReportLab compiler with two-pass `NumberedCanvas` rendering publication-grade documents with headers, footers, and page numbers ("Page X of Y").
 - **Four Archetypes:** Executive Security Summary, Technical Detection Report, Analyst Review Report, and Consolidated Assessment Report.
-- **Structured Exports:** `report_data.json` and sanitized CSV tables (`prediction_summary.csv`, `model_comparison.csv`, etc.).
+- **Structured Exports:** Machine-readable `report_data.json` and sanitized CSV tables (`prediction_summary.csv`, `model_comparison.csv`, `analyst_review_summary.csv`, `attck_mapping_summary.csv`).
 - **Security Protections:** CSV formula injection mitigation and IPv4 host address redaction (`192.168.1.xxx`).
-- **Evidence Bundles:** Cryptographically verified `evidence_bundle_<report_id>.zip` packages with path-traversal safeguards.
+- **Evidence Bundles:** SHA-256-verified `evidence_bundle_<report_id>.zip` packages with path-traversal safeguards.
+- **Explicit Scope Boundaries:** HTML reports and digital signature certificates (e.g. X.509/PKI) are not implemented and out of architectural scope; integrity verification is provided via SHA-256 cryptographic digests.
 
 ---
 
