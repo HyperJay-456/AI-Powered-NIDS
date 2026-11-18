@@ -65,6 +65,8 @@ data/metadata/*
 !data/metadata/.gitkeep
 data/analyses/*
 !data/analyses/.gitkeep
+data/analyst_reviews/*
+!data/analyst_reviews/.gitkeep
 *.db
 *.sqlite
 *.sqlite3

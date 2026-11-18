@@ -21,6 +21,7 @@ MODELS_DIR: Path = BASE_DIR / "models"
 SAVED_MODELS_DIR: Path = MODELS_DIR / "saved"
 EVALUATIONS_DIR: Path = MODELS_DIR / "evaluations"
 ANALYSES_DIR: Path = DATA_DIR / "analyses"
+ANALYST_REVIEWS_DIR: Path = DATA_DIR / "analyst_reviews"
 LOGS_DIR: Path = BASE_DIR / "logs"
 SRC_DIR: Path = BASE_DIR / "src"
 
@@ -251,6 +252,7 @@ class AppConfig:
     saved_models_dir: Path = SAVED_MODELS_DIR
     evaluations_dir: Path = EVALUATIONS_DIR
     analyses_dir: Path = ANALYSES_DIR
+    analyst_reviews_dir: Path = ANALYST_REVIEWS_DIR
     logs_dir: Path = LOGS_DIR
     src_dir: Path = SRC_DIR
 
@@ -271,6 +273,7 @@ class AppConfig:
             self.saved_models_dir,
             self.evaluations_dir,
             self.analyses_dir,
+            self.analyst_reviews_dir,
             self.logs_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
