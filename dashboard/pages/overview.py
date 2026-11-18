@@ -30,9 +30,12 @@ def _render_header() -> None:
     eng_status = check_dataset_engineering_status(session_state=st.session_state)
     md_status = check_model_status()
     eval_status = check_model_evaluation_status()
+    det_status = check_latest_analysis_status()
 
-    if eval_status.is_completed:
-        cp_badge = ("CP-07 Completed", "success")
+    if det_status.has_run:
+        cp_badge = ("Release v1.0.0 Active", "success")
+    elif eval_status.is_completed:
+        cp_badge = ("CP-08 Ready", "success")
     elif md_status.trained_count > 0:
         cp_badge = ("CP-07 Active", "info")
     elif eng_status.is_completed:
@@ -49,9 +52,85 @@ def _render_header() -> None:
         icon="🛡️",
         badges=[
             ("Mode: Local / Offline", "neutral"),
+            ("v1.0.0 Production", "success"),
             cp_badge,
         ],
     )
+
+
+def _render_quickstart_section(
+    dataset_status: DatasetStatus,
+    model_status: ModelSystemStatus,
+) -> None:
+    """Render Section: Quickstart Benchmark & One-Click Pipeline Initializer."""
+    from src.data.demo_dataset import (
+        clear_demo_dataset,
+        install_benchmark_sample_dataset,
+        is_demo_installed,
+        is_pipeline_initialized,
+        run_demo_pipeline,
+    )
+
+    section_header(
+        title="Quickstart & Benchmark Pipeline",
+        description="One-click dataset loader and automated pipeline initializer for immediate testing without external multi-gigabyte downloads:",
+    )
+
+    demo_installed = is_demo_installed()
+    pipeline_ready = is_pipeline_initialized()
+
+    col_info, col_actions = st.columns([3, 2])
+    with col_info:
+        st.markdown(
+            f"""
+            <div class="nids-card" style="margin-bottom: 0;">
+                <div class="nids-card-title">⚡ Instant Onboarding Controls</div>
+                <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.6;">
+                    <div><strong>Dataset Status:</strong> {"✅ Benchmark Sample Installed (1,500 rows, 4 classes)" if demo_installed else "⚪ Clean / Empty (Ready to load)"}</div>
+                    <div><strong>Pipeline Status:</strong> {"✅ Pipeline Active & Models Trained" if pipeline_ready else "⚪ Pipeline Uninitialized"}</div>
+                    <div style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--color-text-muted);">
+                        Click <strong>Run Full Pipeline</strong> to generate sample telemetry, execute preprocessing, train the 3 models, evaluate test holdout, and perform batch detection in ~2 seconds.
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_actions:
+        st.markdown("<div style='height: 0.25rem;'></div>", unsafe_allow_html=True)
+        c_btn1, c_btn2 = st.columns(2)
+        with c_btn1:
+            if st.button("⚡ Load Sample CSV", key="btn_load_sample_csv", use_container_width=True):
+                with st.spinner("Generating and validating benchmark sample CSV..."):
+                    csv_path, rec = install_benchmark_sample_dataset()
+                    st.toast(f"Sample dataset loaded: {rec.safe_filename}", icon="✅")
+                    st.rerun()
+
+        with c_btn2:
+            if st.button("🚀 Run Full Pipeline", key="btn_run_full_pipeline", use_container_width=True, type="primary"):
+                progress_bar = st.progress(0.0)
+                status_text = st.empty()
+
+                def update_prog(msg: str, frac: float) -> None:
+                    progress_bar.progress(frac)
+                    status_text.caption(f"⚙️ {msg}")
+
+                try:
+                    res = run_demo_pipeline(progress_callback=update_prog)
+                    st.toast(f"Pipeline complete! Classified {res['predicted_rows']} flows.", icon="🚀")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Pipeline initialization failed: {e}")
+
+        if demo_installed or pipeline_ready or dataset_status.is_loaded or model_status.trained_count > 0:
+            if st.button("🧹 Reset to Clean State", key="btn_reset_clean_state", use_container_width=True):
+                with st.spinner("Restoring clean repository state..."):
+                    res = clear_demo_dataset()
+                    st.toast("System restored to clean state.", icon="🧹")
+                    st.rerun()
+
+    st.markdown("<div style='height: 0.75rem;'></div>", unsafe_allow_html=True)
 
 
 def _render_executive_summary_cards(
@@ -295,7 +374,9 @@ def _render_project_progress_section() -> None:
 
 
 def _render_getting_started_section() -> None:
-    """Render Section G: Getting Started Section."""
+    """Render Section H: Getting Started Section."""
+    from dashboard.navigation import set_active_route
+
     section_header(
         title="Getting Started Workflow",
         description="Sequential workflow to execute end-to-end CSV-based intrusion detection analysis on network flows:",
@@ -304,62 +385,84 @@ def _render_getting_started_section() -> None:
     steps = [
         (
             "Prepare CIC-IDS-2017 Dataset Files",
-            "Prepare the CIC-IDS-2017 benchmark CSV files from official or repository sources for traffic analysis.",
+            "Prepare the CIC-IDS-2017 benchmark CSV files from official or repository sources for traffic analysis. Alternatively, use the Quickstart loader above for instant verification.",
             "Prerequisite",
+            "traffic_analysis",
+            "Traffic Analysis",
         ),
         (
             "Upload Network Traffic via Traffic Analysis",
-            "CSV upload and automated schema validation through the Traffic Analysis module will become available in Checkpoint CP-04.",
-            "Upcoming: CP-04",
+            "CSV upload and automated schema validation through the Traffic Analysis module in Checkpoint CP-04.",
+            "Ready (CP-04)",
+            "traffic_analysis",
+            "Upload CSVs",
         ),
         (
             "Execute Dataset Engineering",
-            "Clean missing values, remediate infinite flow rates, and apply robust scaling to flow feature matrices.",
-            "Upcoming: CP-05",
+            "Clean missing values, remediate infinite flow rates, and apply robust scaling to flow feature matrices in CP-05.",
+            "Ready (CP-05)",
+            "traffic_analysis",
+            "Engineering Pipeline",
         ),
         (
             "Train Authorized ML Models",
-            "Train Support Vector Machine, Multilayer Perceptron, and Decision Tree estimators on validated training splits.",
-            "Upcoming: CP-06",
+            "Train Support Vector Machine, Multilayer Perceptron, and Decision Tree estimators on validated training splits in CP-06.",
+            "Ready (CP-06)",
+            "model_laboratory",
+            "Model Laboratory",
         ),
         (
             "Benchmark & Evaluate Performance",
-            "Review 5-fold cross-validation metrics, confusion matrices, ROC-AUC curves, and empirical inference timing.",
-            "Upcoming: CP-07",
+            "Review 5-fold cross-validation metrics, confusion matrices, ROC-AUC curves, and empirical inference timing in CP-07.",
+            "Ready (CP-07)",
+            "model_laboratory",
+            "Evaluation Lab",
         ),
         (
             "CSV-Based Intrusion Detection Analysis",
-            "Execute batch or sample flow classification on uploaded network traffic CSVs using trained models.",
-            "Upcoming: CP-08",
+            "Execute batch or sample flow classification on uploaded network traffic CSVs using trained models in CP-08.",
+            "Ready (CP-08)",
+            "detection_center",
+            "Detection Center",
         ),
         (
             "Analyze Threat Predictions & Export",
-            "Inspect feature discriminators, review threat intelligence taxonomies, and export forensic audit logs.",
-            "Upcoming: CP-09 & CP-10",
+            "Inspect feature discriminators, review threat intelligence taxonomies, and export forensic audit logs in CP-09 to CP-11.",
+            "Ready (CP-09 to CP-11)",
+            "prediction_explorer",
+            "Prediction Explorer",
         ),
     ]
 
     st.markdown('<div class="nids-step-list">', unsafe_allow_html=True)
-    for idx, (title, desc, status_text) in enumerate(steps, start=1):
+    for idx, (title, desc, status_text, target_route, btn_label) in enumerate(steps, start=1):
         is_prereq = "Prerequisite" in status_text
-        badge_variant = "info" if is_prereq else "neutral"
+        badge_variant = "info" if is_prereq else "success"
         badge = badge_html(status_text, variant=badge_variant, show_dot=False)
 
-        st.markdown(
-            f"""
-            <div class="nids-step-item">
-                <div class="nids-step-left">
-                    <div class="nids-step-num">{idx}</div>
-                    <div>
-                        <div class="nids-step-text" style="font-weight: 600;">{title}</div>
-                        <div style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-top: 0.125rem;">{desc}</div>
+        col_text, col_nav = st.columns([5, 1])
+        with col_text:
+            st.markdown(
+                f"""
+                <div class="nids-step-item" style="margin-bottom: 0.5rem;">
+                    <div class="nids-step-left">
+                        <div class="nids-step-num">{idx}</div>
+                        <div>
+                            <div class="nids-step-text" style="font-weight: 600;">{title}</div>
+                            <div style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-top: 0.125rem;">{desc}</div>
+                        </div>
                     </div>
+                    <div>{badge}</div>
                 </div>
-                <div>{badge}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
+        with col_nav:
+            st.markdown("<div style='height: 0.25rem;'></div>", unsafe_allow_html=True)
+            if st.button("Go ➔", key=f"btn_step_nav_{idx}", help=f"Navigate to {btn_label}"):
+                set_active_route(target_route)
+                st.rerun()
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -437,7 +540,10 @@ def render() -> None:
     # 3. Section B: Executive Summary Cards
     _render_executive_summary_cards(dataset_status, model_status)
 
-    # 4. Section C: Dataset Readiness Section
+    # 4. Section: Quickstart Benchmark & Pipeline Controls
+    _render_quickstart_section(dataset_status, model_status)
+
+    # 5. Section C: Dataset Readiness Section
     _render_dataset_readiness_section(dataset_status)
 
     # 5. Section D: Preprocessed Datasets & ML Partitions (CP-05)

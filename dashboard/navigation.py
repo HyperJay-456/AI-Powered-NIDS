@@ -19,6 +19,7 @@ from dashboard.pages import (
     threat_intelligence,
     traffic_analysis,
 )
+from dashboard.status_checker import check_model_status
 
 SESSION_ROUTE_KEY = "nids_active_route"
 
@@ -168,22 +169,30 @@ def render_sidebar() -> Route:
         st.session_state[SESSION_ROUTE_KEY] = selected_route.route_id
 
     # 3. Project Status Widget in Sidebar
+    model_stat = check_model_status()
+    models_label = f"{model_stat.trained_count}/{model_stat.total_models} Trained"
+    models_color = "var(--color-status-success)" if model_stat.trained_count > 0 else "var(--color-status-neutral)"
+
     status_markup = f"""
 <div class="nids-status-widget">
     <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-        PROJECT STATUS
+        SYSTEM STATUS
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Current Stage</span>
-        <span style="color: var(--color-status-success); font-weight: 600;">CP-04 Active</span>
+        <span class="nids-status-label">Release Version</span>
+        <span style="color: var(--color-status-success); font-weight: 600;">v1.0.0 Production</span>
+    </div>
+    <div class="nids-status-row">
+        <span class="nids-status-label">Architecture</span>
+        <span style="color: var(--color-text-primary);">CP-01 to CP-12 Active</span>
     </div>
     <div class="nids-status-row">
         <span class="nids-status-label">Dataset Baseline</span>
         <span style="color: var(--color-text-primary);">{settings.dataset.name}</span>
     </div>
     <div class="nids-status-row">
-        <span class="nids-status-label">Detection Engines</span>
-        <span style="color: var(--color-status-neutral); font-weight: 600;">Uninitialized (CP-06)</span>
+        <span class="nids-status-label">ML Estimators</span>
+        <span style="color: {models_color}; font-weight: 600;">{models_label}</span>
     </div>
     <div class="nids-status-row">
         <span class="nids-status-label">Models Authorized</span>

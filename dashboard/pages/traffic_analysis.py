@@ -148,6 +148,17 @@ def _render_upload_section(manifest: IngestionManifest) -> None:
         key="traffic_csv_uploader",
     )
 
+    col_help, col_sample_btn = st.columns([3, 1])
+    with col_help:
+        st.caption("Don't have a multi-gigabyte CIC-IDS-2017 flow CSV? Load the standard 1,500-flow benchmark sample with one click:")
+    with col_sample_btn:
+        if st.button("⚡ Load Benchmark Sample", key="btn_traffic_load_sample", use_container_width=True):
+            from src.data.demo_dataset import install_benchmark_sample_dataset
+            with st.spinner("Generating and validating benchmark sample CSV..."):
+                install_benchmark_sample_dataset()
+                st.toast("Benchmark sample installed successfully!", icon="✅")
+                st.rerun()
+
     if uploaded_files:
         st.markdown(
             "<div style='font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; "

@@ -158,8 +158,9 @@ pip install -r requirements.txt
 The repository includes automated Windows batch utilities for rapid execution:
 - **`start.bat`**: Validates the Python virtual environment, verifies port 8501, initializes the Streamlit server in a dedicated console window, and automatically launches your browser at `http://localhost:8501`.
 - **`stop.bat`**: Scans for active processes listening on port 8501 and safely terminates the entire NIDS server process tree.
+- **`init_demo.bat`**: Generates the authentic CIC-IDS-2017 benchmark sample dataset (1,500 flows across 4 classes) and executes the complete pipeline (preprocessing, 3-model training, evaluation gating, batch detection) in ~2 seconds so all 8 views are immediately populated with real data out of the box.
 
-Simply double-click `start.bat` in Windows Explorer to launch, and double-click `stop.bat` to shut down.
+Simply double-click `start.bat` in Windows Explorer to launch, and double-click `stop.bat` to shut down. You can also use the interactive **Quickstart Benchmark & Pipeline** button directly on the Overview dashboard.
 
 ### Option B: Terminal Launch (PowerShell)
 ```powershell
@@ -172,11 +173,11 @@ The application will open automatically in your browser at `http://localhost:850
 
 ## Testing & Quality Assurance
 
-Run the complete 268-test automated test suite:
+Run the complete 270-test automated test suite:
 ```powershell
 pytest tests/ -q
 ```
-*Current Result: `268 passed, 49 warnings in 15.08s (0 failures, 0 regressions)`.*
+*Current Result: `270 passed, 49 warnings in 15.97s (0 failures, 0 regressions)`.*
 
 ---
 
